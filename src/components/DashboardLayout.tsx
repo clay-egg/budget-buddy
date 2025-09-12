@@ -1,14 +1,14 @@
-import React, { useState } from 'react'
-import { Outlet, Navigate, Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { 
-  CurrencyDollarIcon,
+import {
+  ArrowRightOnRectangleIcon,
   Bars3Icon,
-  HomeIcon,
-  PlusIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon
+  CurrencyDollarIcon,
+  HomeIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline'
+import { useState } from 'react'
+import { Link, Navigate, Outlet } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -41,7 +41,7 @@ function DashboardLayout() {
           <div className="flex items-center h-16 px-4 bg-primary-500">
             <CurrencyDollarIcon className="h-8 w-8 text-white" />
             <span className="ml-2 text-xl font-bold text-white">
-              ExpenseTracker
+              Budget Buddy
             </span>
           </div>
 
@@ -65,13 +65,13 @@ function DashboardLayout() {
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 bg-primary-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    {user.email[0].toUpperCase()}
+                    {user.name ? user.name[0].toUpperCase() : user.email?.[0]?.toUpperCase()}
                   </span>
                 </div>
               </div>
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700 truncate">
-                  {user.email}
+                  {user.name}
                 </p>
               </div>
               <button
@@ -97,8 +97,19 @@ function DashboardLayout() {
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
-            <span className="text-lg font-semibold">ExpenseTracker</span>
-            <button onClick={signOut} className="text-gray-500 hover:text-gray-600">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg font-semibold">Budget Buddy</span>
+              {user?.name && (
+                <span className="px-2 py-1 text-sm font-medium text-primary-700 bg-primary-100 rounded-full">
+                  {user.name}
+                </span>
+              )}
+            </div>
+            <button 
+              onClick={signOut} 
+              className="text-gray-500 hover:text-gray-600 flex items-center"
+              title="Sign out"
+            >
               <ArrowRightOnRectangleIcon className="h-6 w-6" />
             </button>
           </div>

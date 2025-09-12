@@ -1,11 +1,21 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
-import type { User } from '../types/database'
+// Import the updated User type from database.ts
+import type { User as SupabaseUserType } from '../types/database' 
+
+// Define a more specific type for the user object we'll manage in context
+// This ensures our context user object matches our desired structure
+interface AuthUser extends SupabaseUserType {
+  // We extend SupabaseUserType and ensure 'name' is handled, 
+  // even if it comes from user_metadata which might be any type initially.
+  // For stricter typing, we might cast or re-assert 'name' type here if needed.
+}
 
 interface AuthContextType {
-  user: User | null
-  signUp: (email: string, password: string) => Promise<any>
-  signIn: (email: string, password: string) => Promise<any>
+  user: AuthUser | null
+  // Add 'name' parameter to signUp
+  signUp: (email: string, password: string, name: string) => Promise<{ data: any; error: any }>
+  signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<void>
   loading: boolean
 }
@@ -20,44 +30,103 @@ export function useAuth() {
   return context
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Helper function to extract relevant user data, including name from metadata
+  const extractUserData = (supabaseUser: any): AuthUser | null => {
+    if (!supabaseUser) return null;
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      // Extract name from user_metadata. If it's not there or null, it will be null.
+      name: supabaseUser.user_metadata?.name || null, 
+    };
+  };
+
   useEffect(() => {
-    // Check if user is already logged in
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ? { id: session.user.id, email: session.user.email! } : null)
+      setUser(extractUserData(session?.user))
       setLoading(false)
     }
 
     getSession()
 
-    // Listen for auth changes
+    // Listen for authentication state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ? { id: session.user.id, email: session.user.email! } : null)
+        setUser(extractUserData(session?.user))
         setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Cleanup subscription on component unmount
+    return () => subscription?.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string) => {
-    return await supabase.auth.signUp({ email, password })
+  // Modified signUp function to accept 'name' and update user metadata
+  const signUp = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      // Note: user_metadata is NOT set directly here during signUp.
+      // We'll update it immediately after successful signup.
+    });
+
+    if (error) {
+      console.error("Supabase signUp error:", error);
+      return { data, error };
+    }
+
+    // If signup was successful and a user object is returned
+    if (data.user) {
+      try {
+        // Update the user's metadata with the provided name
+        const { data: updatedUserSession, error: updateError } = await supabase.auth.updateUser({
+          data: { name: name } // Store name in user_metadata
+        });
+
+        if (updateError) {
+          console.error("Error updating user metadata after signup:", updateError);
+          // Decide how to handle this:
+          // For now, we log the error but still return the original signup success.
+          // A more robust app might require metadata update to be truly successful.
+        } else {
+          // If metadata update succeeded, update the user state in the context
+          setUser(extractUserData(updatedUserSession?.user)); 
+        }
+      } catch (updateException) {
+        // Catch any unexpected exceptions during the metadata update
+        console.error("Exception during user metadata update:", updateException);
+      }
+    }
+    
+    // Return the original signup result object
+    return { data, error }; 
   }
 
+  // Modified signIn to ensure user metadata is extracted and set in context
   const signIn = async (email: string, password: string) => {
-    return await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    // If signin was successful and a session is returned, update the user state
+    if (!error && data.session) {
+        setUser(extractUserData(data.session.user));
+    }
+    return { data, error };
   }
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    setUser(null)
+    setUser(null) // Clear user state on sign out
   }
 
+  // Value provided by the context
   const value = {
     user,
     signUp,

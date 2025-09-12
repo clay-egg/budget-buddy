@@ -1,6 +1,5 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
 import { CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 
 function LandingPage() {
   return (
@@ -10,9 +9,9 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <CurrencyDollarIcon className="h-8 w-8 text-primary-500" />
-              <span className="ml-2 text-xl font-bold text-gray-900">
-                ExpenseTracker
+              <CurrencyDollarIcon className="h-8 w-8 text-primary-600" />
+              <span className="ml-2 text-2xl font-bold bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent">
+                Budget Buddy
               </span>
             </div>
             <div className="flex items-center space-x-4">

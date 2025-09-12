@@ -27,7 +27,9 @@ export interface Expense {
     date: string
   }
   
+  // Update User interface to include optional name
   export interface User {
     id: string
-    email: string
+    email: string | null | undefined 
+    name?: string | null | undefined // Added optional name field
   }
