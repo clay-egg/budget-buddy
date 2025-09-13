@@ -1,9 +1,12 @@
 import {
+  AcademicCapIcon,
+  BriefcaseIcon,
   CalendarIcon,
   ClockIcon,
   CurrencyDollarIcon,
   FilmIcon,
-  HomeIcon,
+  GlobeAltIcon,
+  HeartIcon,
   QuestionMarkCircleIcon,
   ShoppingBagIcon,
   ShoppingCartIcon,
@@ -15,6 +18,7 @@ import {
   BarElement,
   CategoryScale,
   Chart as ChartJS,
+  Filler,
   Legend,
   LinearScale,
   LineElement,
@@ -36,6 +40,7 @@ ChartJS.register(
   BarElement,
   PointElement,
   LineElement,
+  Filler,
   Title,
   Tooltip,
   Legend
@@ -43,12 +48,15 @@ ChartJS.register(
 
 // Category icons mapping
 const categoryIcons: Record<string, JSX.Element> = {
-  'Housing': <HomeIcon className="h-5 w-5 text-blue-500" />,
+  'Food & Dining': <ShoppingBagIcon className="h-5 w-5 text-yellow-500" />,
   'Transportation': <TruckIcon className="h-5 w-5 text-green-500" />,
-  'Food': <ShoppingBagIcon className="h-5 w-5 text-yellow-500" />,
-  'Entertainment': <FilmIcon className="h-5 w-5 text-purple-500" />,
-  'Utilities': <WifiIcon className="h-5 w-5 text-gray-500" />,
   'Shopping': <ShoppingCartIcon className="h-5 w-5 text-pink-500" />,
+  'Entertainment': <FilmIcon className="h-5 w-5 text-purple-500" />,
+  'Bills & Utilities': <WifiIcon className="h-5 w-5 text-blue-500" />,
+  'Healthcare': <HeartIcon className="h-5 w-5 text-red-500" />,
+  'Education': <AcademicCapIcon className="h-5 w-5 text-indigo-500" />,
+  'Travel': <GlobeAltIcon className="h-5 w-5 text-cyan-500" />,
+  'Business': <BriefcaseIcon className="h-5 w-5 text-gray-600" />,
   'Other': <QuestionMarkCircleIcon className="h-5 w-5 text-gray-400" />,
 };
 
