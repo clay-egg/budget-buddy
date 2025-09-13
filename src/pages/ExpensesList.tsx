@@ -5,6 +5,20 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Expense, ExpenseCategory } from '../types/database'
 
+// Color mapping for categories to match the doughnut chart
+const categoryColors: Record<string, string> = {
+  'Food & Dining': 'bg-amber-200 text-amber-900',
+  'Transportation': 'bg-emerald-200 text-emerald-900',
+  'Shopping': 'bg-pink-200 text-pink-900',
+  'Entertainment': 'bg-violet-200 text-violet-900',
+  'Bills & Utilities': 'bg-blue-200 text-blue-900',
+  'Healthcare': 'bg-red-200 text-red-900',
+  'Education': 'bg-indigo-200 text-indigo-900',
+  'Travel': 'bg-cyan-200 text-cyan-900',
+  'Business': 'bg-gray-200 text-gray-900',
+  'Other': 'bg-gray-300 text-gray-900'
+};
+
 function ExpensesList() {
   const { user } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -593,11 +607,11 @@ function ExpensesList() {
                     </div>
                   </div>
                   {/* Expense Details Footer */}
-                  <div className="flex items-center text-sm text-gray-500 space-x-4">
-                    <span className="bg-gray-100 px-2 py-1 rounded-full"> {/* Category tag */}
+                  <div className="flex items-center text-sm space-x-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryColors[expense.category] || 'bg-gray-100 text-gray-800'}`}>
                       {expense.category}
                     </span>
-                    <span>{formatDate(expense.date)}</span> {/* Formatted date */}
+                    <span className="text-gray-500">{formatDate(expense.date)}</span>
                   </div>
                 </div>
                 {/* Action Buttons (Edit/Delete) */}
