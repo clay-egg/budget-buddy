@@ -1,5 +1,5 @@
 import { FunnelIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -18,6 +18,9 @@ const categoryColors: Record<string, string> = {
   'Business': 'bg-gray-200 text-gray-900',
   'Other': 'bg-gray-300 text-gray-900'
 };
+
+type SortField = 'date' | 'amount' | 'category' | 'description' | ''
+type SortDirection = 'asc' | 'desc'
 
 function ExpensesList() {
   const { user } = useAuth()
@@ -58,6 +61,15 @@ function ExpensesList() {
     'Business',
     'Other'
   ]
+
+  // Add sort state
+  const [sortConfig, setSortConfig] = useState<{
+    field: SortField
+    direction: SortDirection
+  }>({
+    field: 'date',
+    direction: 'desc' // Default: newest first
+  })
 
   // Effect to fetch expenses when user changes or filters are applied
   useEffect(() => {
@@ -237,6 +249,59 @@ function ExpensesList() {
     })
   }
 
+  // Sort expenses based on sortConfig
+  const sortedExpenses = useMemo(() => {
+    const sortableExpenses = [...expenses]
+    if (!sortConfig.field) return sortableExpenses
+
+    return sortableExpenses.sort((a, b) => {
+      let aValue, bValue
+      
+      switch (sortConfig.field) {
+        case 'date':
+          aValue = new Date(a.date).getTime()
+          bValue = new Date(b.date).getTime()
+          break
+        case 'amount':
+          aValue = parseFloat(a.amount.toString())
+          bValue = parseFloat(b.amount.toString())
+          break
+        case 'category':
+        case 'description':
+          aValue = a[sortConfig.field].toLowerCase()
+          bValue = b[sortConfig.field].toLowerCase()
+          break
+        default:
+          return 0
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1
+      }
+      return 0
+    })
+  }, [expenses, sortConfig])
+
+  // Handle sort change
+  const handleSort = (field: SortField) => {
+    setSortConfig(prev => ({
+      field,
+      direction: 
+        prev.field === field && prev.direction === 'desc' 
+          ? 'asc' 
+          : 'desc'
+    }))
+  }
+
+  // Helper to get sort indicator
+  const getSortIndicator = (field: SortField) => {
+    if (sortConfig.field !== field) return null
+    return sortConfig.direction === 'asc' ? '↑' : '↓'
+  }
+
   // Show a loading spinner if data is being fetched
   if (loading) {
     return (
@@ -247,131 +312,283 @@ function ExpensesList() {
   }
 
   return (
-    <div>
-      {/* Header Section */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Your Expenses</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track and manage all your expenses
-          </p>
-        </div>
-        {/* Filter Button */}
-        <div className="mt-4 sm:mt-0 flex gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)} // Toggle filter visibility
-            className="btn-secondary flex items-center"
-          >
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filters
-            {hasActiveFilters && ( // Show indicator if filters are active
-              <span className="ml-2 bg-primary-500 text-white text-xs px-2 py-0.5 rounded-full">
-                Active
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Filters Panel - Conditionally rendered */}
-      {showFilters && (
-        <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                name="category"
-                value={filters.category}
-                onChange={handleFilterChange}
-                className="input-field"
-              >
-                <option value="">All Categories</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Start Date Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                From Date
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                className="input-field"
-              />
-            </div>
-
-            {/* End Date Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                To Date
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                className="input-field"
-              />
-            </div>
-
-            {/* Min Amount Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Amount
-              </label>
-              <input
-                type="number"
-                name="minAmount"
-                value={filters.minAmount}
-                onChange={handleFilterChange}
-                className="input-field"
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-              />
-            </div>
-
-            {/* Max Amount Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Amount
-              </label>
-              <input
-                type="number"
-                name="maxAmount"
-                value={filters.maxAmount}
-                onChange={handleFilterChange}
-                className="input-field"
-                placeholder="1000.00"
-                step="0.01"
-                min="0"
-              />
-            </div>
-
-            {/* Clear Filters Button */}
-            <div className="flex items-end">
+    <div className="flex flex-col min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {/* Header Section */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Your Expenses</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Track and manage all your expenses
+            </p>
+          </div>
+          
+          {/* Filter and Sort Controls */}
+          <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
+            <div className="flex gap-3">
+              {/* Sort Dropdown */}
+              <div className="w-full sm:w-48">
+                <select
+                  id="sort"
+                  value={`${sortConfig.field}:${sortConfig.direction}`}
+                  onChange={(e) => {
+                    const [field, direction] = e.target.value.split(':')
+                    setSortConfig({
+                      field: field as SortField,
+                      direction: direction as SortDirection
+                    })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                >
+                  <option value="date:desc">Newest First</option>
+                  <option value="date:asc">Oldest First</option>
+                  <option value="amount:desc">Amount (High to Low)</option>
+                  <option value="amount:asc">Amount (Low to High)</option>
+                  <option value="category:asc">Category (A-Z)</option>
+                  <option value="category:desc">Category (Z-A)</option>
+                  <option value="description:asc">Description (A-Z)</option>
+                  <option value="description:desc">Description (Z-A)</option>
+                </select>
+              </div>
+              
+              {/* Filter Button */}
               <button
-                onClick={clearFilters}
-                className="btn-secondary w-full"
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn-secondary flex items-center whitespace-nowrap"
               >
-                Clear Filters
+                <FunnelIcon className="h-4 w-4 mr-2" />
+                Filters
+                {hasActiveFilters && (
+                  <span className="ml-2 bg-primary-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    Active
+                  </span>
+                )}
               </button>
             </div>
           </div>
         </div>
-      )}
 
+        {/* Filters Panel - Conditionally rendered */}
+        {showFilters && (
+          <div className="card mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Category Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  name="category"
+                  value={filters.category}
+                  onChange={handleFilterChange}
+                  className="input-field"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map(category => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start Date Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={filters.startDate}
+                  onChange={handleFilterChange}
+                  className="input-field"
+                />
+              </div>
+
+              {/* End Date Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={filters.endDate}
+                  onChange={handleFilterChange}
+                  className="input-field"
+                />
+              </div>
+
+              {/* Min Amount Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Amount
+                </label>
+                <input
+                  type="number"
+                  name="minAmount"
+                  value={filters.minAmount}
+                  onChange={handleFilterChange}
+                  className="input-field"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+
+              {/* Max Amount Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Amount
+                </label>
+                <input
+                  type="number"
+                  name="maxAmount"
+                  value={filters.maxAmount}
+                  onChange={handleFilterChange}
+                  className="input-field"
+                  placeholder="1000.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  className="btn-secondary w-full"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="card flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Total Expenses Count */}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {expenses.length}
+                  </div>
+                  <div className="text-sm text-gray-500">Total Entries</div>
+                </div>
+                {/* Total Amount */}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary-600">
+                    {formatCurrency(totalExpenses)}
+                  </div>
+                  <div className="text-sm text-gray-500">Total Amount</div>
+                </div>
+                {/* Average Expense */}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\$0.00'}
+                  </div>
+                  <div className="text-sm text-gray-500">Average</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Expenses List or Empty State */}
+        {expenses.length === 0 ? (
+          // Empty state message when no expenses are found
+          <div className="card text-center py-12">
+            <div className="text-gray-400 mb-4">
+              {/* Empty list icon */}
+              <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
+            <p className="text-gray-500 mb-6">
+              {hasActiveFilters ? 'Try adjusting your filters or' : 'Get started by'} adding your first expense.
+            </p>
+            {/* Button to add first expense */}
+            <button
+              onClick={() => window.location.href = '/dashboard/add'} // Direct navigation
+              className="btn-primary"
+            >
+              Add Your First Expense
+            </button>
+          </div>
+        ) : (
+          // Render list of expenses if found
+          <div className="space-y-4">
+            {sortedExpenses.map((expense) => (
+              <div key={expense.id} className="card hover:shadow-lg transition-shadow p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0"> {/* flex-1 allows description to take available space */}
+                    {/* Expense Details Header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-medium text-gray-900 truncate"> {/* Truncate long descriptions */}
+                        {expense.description}
+                      </h3>
+                      <div className="text-xl font-bold text-primary-600">
+                        {formatCurrency(parseFloat(expense.amount.toString()))} {/* Format amount */}
+                      </div>
+                    </div>
+                    {/* Expense Details Footer */}
+                    <div className="flex items-center text-sm space-x-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryColors[expense.category] || 'bg-gray-100 text-gray-800'}`}>
+                        {expense.category}
+                      </span>
+                      <span className="text-gray-500">{formatDate(expense.date)}</span>
+                    </div>
+                  </div>
+                  {/* Action Buttons (Edit/Delete) */}
+                  <div className="ml-4 flex items-center space-x-2">
+                    {/* Edit Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditClick(expense);
+                      }}
+                      className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      title="Edit expense"
+                      disabled={!!deleteLoading}
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpenseToDelete({
+                          id: expense.id,
+                          description: expense.description || 'this expense'
+                        });
+                      }}
+                      className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                      title="Delete expense"
+                      disabled={!!deleteLoading}
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
       {/* Delete Confirmation Dialog */}
       {expenseToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -531,122 +748,6 @@ function ExpensesList() {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Summary Section */}
-      <div className="card mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Total Expenses Count */}
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {expenses.length}
-            </div>
-            <div className="text-sm text-gray-500">Total Entries</div>
-          </div>
-          {/* Total Amount */}
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary-600">
-              {formatCurrency(totalExpenses)}
-            </div>
-            <div className="text-sm text-gray-500">Total Amount</div>
-          </div>
-          {/* Average Expense */}
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\$0.00'}
-            </div>
-            <div className="text-sm text-gray-500">Average</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
-      {/* Expenses List or Empty State */}
-      {expenses.length === 0 ? (
-        // Empty state message when no expenses are found
-        <div className="card text-center py-12">
-          <div className="text-gray-400 mb-4">
-            {/* Empty list icon */}
-            <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
-          <p className="text-gray-500 mb-6">
-            {hasActiveFilters ? 'Try adjusting your filters or' : 'Get started by'} adding your first expense.
-          </p>
-          {/* Button to add first expense */}
-          <button
-            onClick={() => window.location.href = '/dashboard/add'} // Direct navigation
-            className="btn-primary"
-          >
-            Add Your First Expense
-          </button>
-        </div>
-      ) : (
-        // Render list of expenses if found
-        <div className="space-y-4">
-          {expenses.map((expense) => (
-            <div key={expense.id} className="card hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0"> {/* flex-1 allows description to take available space */}
-                  {/* Expense Details Header */}
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-medium text-gray-900 truncate"> {/* Truncate long descriptions */}
-                      {expense.description}
-                    </h3>
-                    <div className="text-xl font-bold text-primary-600">
-                      {formatCurrency(parseFloat(expense.amount.toString()))} {/* Format amount */}
-                    </div>
-                  </div>
-                  {/* Expense Details Footer */}
-                  <div className="flex items-center text-sm space-x-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryColors[expense.category] || 'bg-gray-100 text-gray-800'}`}>
-                      {expense.category}
-                    </span>
-                    <span className="text-gray-500">{formatDate(expense.date)}</span>
-                  </div>
-                </div>
-                {/* Action Buttons (Edit/Delete) */}
-                <div className="ml-4 flex items-center space-x-2">
-                  {/* Edit Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditClick(expense);
-                    }}
-                    className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    title="Edit expense"
-                    disabled={!!deleteLoading}
-                  >
-                    <PencilIcon className="h-4 w-4" />
-                  </button>
-                  {/* Delete Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpenseToDelete({
-                        id: expense.id,
-                        description: expense.description || 'this expense'
-                      });
-                    }}
-                    className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
-                    title="Delete expense"
-                    disabled={!!deleteLoading}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>
