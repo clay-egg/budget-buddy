@@ -245,13 +245,60 @@ function Dashboard() {
     ],
   };
 
-  // Chart options
-  const chartOptions = {
+  // Chart options for line chart
+  const lineChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false, // Hide legend for line chart
+      },
+    },
+  };
+
+  // Chart options for doughnut chart
+  const doughnutChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'bottom' as const,
+        labels: {
+          usePointStyle: true,
+          pointStyle: 'circle',
+          boxWidth: 6,  
+          boxHeight: 6, 
+          padding: 15,   
+          font: {
+            size: 11    
+          },
+          generateLabels: (chart: any) => {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              return data.labels.map((label: string, i: number) => {
+                const dataset = data.datasets[0];
+                const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                  ? dataset.backgroundColor[i] 
+                  : dataset.backgroundColor;
+                
+                return {
+                  text: label,
+                  fillStyle: backgroundColor,
+                  hidden: false,
+                  lineCap: 'round',
+                  lineDash: [],
+                  lineDashOffset: 0,
+                  lineJoin: 'round',
+                  lineWidth: 1,
+                  strokeStyle: backgroundColor,
+                  pointStyle: 'circle',
+                  rotation: 0
+                };
+              });
+            }
+            return [];
+          }
+        }
       },
     },
   };
@@ -413,7 +460,7 @@ function Dashboard() {
           </div>
           <div className="h-64">
             {categoryData.length > 0 ? (
-              <Doughnut data={categoryChartData} options={chartOptions} />
+              <Doughnut data={categoryChartData} options={doughnutChartOptions} />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
                 No category data available
@@ -429,7 +476,7 @@ function Dashboard() {
           </div>
           <div className="h-64">
             {monthlyData.length > 0 ? (
-              <Line data={monthlyTrendData} options={chartOptions} />
+              <Line data={monthlyTrendData} options={lineChartOptions} />
             ) : (
               <div className="h-full flex items-center justify-center text-gray-500">
                 No trend data available
