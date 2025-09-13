@@ -39,15 +39,27 @@ function ExpensesList() {
   const [editLoading, setEditLoading] = useState(false)
   const navigate = useNavigate()
   
-  // Filters state
+  // Filters state - for UI input values
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
+  const [filterInputs, setFilterInputs] = useState({
     category: '',
     startDate: '',
     endDate: '',
     minAmount: '',
     maxAmount: ''
   })
+
+  // Applied filters - what's actually being used for data fetching
+  const [appliedFilters, setAppliedFilters] = useState({
+    category: '',
+    startDate: '',
+    endDate: '',
+    minAmount: '',
+    maxAmount: ''
+  })
+
+  // Loading state for applying filters
+  const [applyingFilters, setApplyingFilters] = useState(false)
 
   const categories: ExpenseCategory[] = [
     'Food & Dining',
@@ -71,10 +83,10 @@ function ExpensesList() {
     direction: 'desc' // Default: newest first
   })
 
-  // Effect to fetch expenses when user changes or filters are applied
+  // Effect to fetch expenses when user changes or applied filters change
   useEffect(() => {
     fetchExpenses()
-  }, [user, filters]) // Re-fetch when user or filters change
+  }, [user, appliedFilters]) // Only re-fetch when appliedFilters change
 
   const fetchExpenses = async () => {
     if (!user) return // Don't fetch if no user is logged in
@@ -91,23 +103,23 @@ function ExpensesList() {
         .eq('user_id', user.id)
         .order('date', { ascending: false })
 
-      // Apply dynamic filters based on the 'filters' state
-      if (filters.category) {
-        query = query.eq('category', filters.category)
+      // Apply dynamic filters based on the 'appliedFilters' state
+      if (appliedFilters.category) {
+        query = query.eq('category', appliedFilters.category)
       }
-      if (filters.startDate) {
-        query = query.gte('date', filters.startDate) // Greater than or equal to start date
+      if (appliedFilters.startDate) {
+        query = query.gte('date', appliedFilters.startDate) // Greater than or equal to start date
       }
-      if (filters.endDate) {
-        query = query.lte('date', filters.endDate)   // Less than or equal to end date
+      if (appliedFilters.endDate) {
+        query = query.lte('date', appliedFilters.endDate)   // Less than or equal to end date
       }
-      if (filters.minAmount) {
+      if (appliedFilters.minAmount) {
         // Ensure amount is parsed as float before applying filter
-        query = query.gte('amount', parseFloat(filters.minAmount))
+        query = query.gte('amount', parseFloat(appliedFilters.minAmount))
       }
-      if (filters.maxAmount) {
+      if (appliedFilters.maxAmount) {
         // Ensure amount is parsed as float before applying filter
-        query = query.lte('amount', parseFloat(filters.maxAmount))
+        query = query.lte('amount', parseFloat(appliedFilters.maxAmount))
       }
 
       // Execute the query
@@ -120,6 +132,7 @@ function ExpensesList() {
       setError(err.message || 'Failed to fetch expenses') // Set error message
     } finally {
       setLoading(false) // Always set loading to false
+      setApplyingFilters(false) // Reset applying filters state
     }
   }
 
@@ -207,30 +220,43 @@ function ExpensesList() {
     }
   }
 
-  // Handler for changes in filter input fields
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // Handler for changes in filter input fields (only updates UI, doesn't trigger API)
+  const handleFilterInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFilters(prev => ({
+    setFilterInputs(prev => ({
       ...prev,
-      [name]: value // Update the specific filter field
+      [name]: value // Update the specific filter input field
     }))
+  }
+
+  // Apply filters - triggered by user confirmation
+  const applyFilters = () => {
+    setApplyingFilters(true)
+    setAppliedFilters(filterInputs) // Copy current inputs to applied filters
   }
 
   // Function to reset all filters to their default state
   const clearFilters = () => {
-    setFilters({
+    const emptyFilters = {
       category: '',
       startDate: '',
       endDate: '',
       minAmount: '',
       maxAmount: ''
-    })
+    }
+    setFilterInputs(emptyFilters)
+    setApplyingFilters(true)
+    setAppliedFilters(emptyFilters) // Immediately apply empty filters
   }
 
   // Calculate total expenses from the currently filtered list
   const totalExpenses = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount.toString()), 0)
-  // Check if any filters are currently active
-  const hasActiveFilters = Object.values(filters).some(value => value !== '')
+  
+  // Check if any applied filters are currently active
+  const hasActiveFilters = Object.values(appliedFilters).some(value => value !== '')
+  
+  // Check if current inputs differ from applied filters
+  const hasUnappliedChanges = JSON.stringify(filterInputs) !== JSON.stringify(appliedFilters)
 
   // Helper function to format numbers as USD currency
   const formatCurrency = (amount: number) => {
@@ -363,6 +389,11 @@ function ExpensesList() {
                     Active
                   </span>
                 )}
+                {/* {hasUnappliedChanges && (
+                  // <span className="ml-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    // Pending
+                  // </span>
+                )} */}
               </button>
             </div>
           </div>
@@ -371,7 +402,19 @@ function ExpensesList() {
         {/* Filters Panel - Conditionally rendered */}
         {showFilters && (
           <div className="card mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Filter Expenses</h3>
+              {hasUnappliedChanges && (
+                <span className="text-sm text-yellow-600 flex items-center">
+                  <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Press Apply to Search
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               {/* Category Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -379,8 +422,8 @@ function ExpensesList() {
                 </label>
                 <select
                   name="category"
-                  value={filters.category}
-                  onChange={handleFilterChange}
+                  value={filterInputs.category}
+                  onChange={handleFilterInputChange}
                   className="input-field"
                 >
                   <option value="">All Categories</option>
@@ -400,8 +443,8 @@ function ExpensesList() {
                 <input
                   type="date"
                   name="startDate"
-                  value={filters.startDate}
-                  onChange={handleFilterChange}
+                  value={filterInputs.startDate}
+                  onChange={handleFilterInputChange}
                   className="input-field"
                 />
               </div>
@@ -414,8 +457,8 @@ function ExpensesList() {
                 <input
                   type="date"
                   name="endDate"
-                  value={filters.endDate}
-                  onChange={handleFilterChange}
+                  value={filterInputs.endDate}
+                  onChange={handleFilterInputChange}
                   className="input-field"
                 />
               </div>
@@ -428,8 +471,8 @@ function ExpensesList() {
                 <input
                   type="number"
                   name="minAmount"
-                  value={filters.minAmount}
-                  onChange={handleFilterChange}
+                  value={filterInputs.minAmount}
+                  onChange={handleFilterInputChange}
                   className="input-field"
                   placeholder="0.00"
                   step="0.01"
@@ -445,8 +488,8 @@ function ExpensesList() {
                 <input
                   type="number"
                   name="maxAmount"
-                  value={filters.maxAmount}
-                  onChange={handleFilterChange}
+                  value={filterInputs.maxAmount}
+                  onChange={handleFilterInputChange}
                   className="input-field"
                   placeholder="1000.00"
                   step="0.01"
@@ -454,13 +497,29 @@ function ExpensesList() {
                 />
               </div>
 
-              {/* Clear Filters Button */}
-              <div className="flex items-end">
+              {/* Action Buttons */}
+              <div className="flex items-end gap-2">
                 <button
                   onClick={clearFilters}
-                  className="btn-secondary w-full"
+                  className="btn-secondary flex-1"
+                  disabled={applyingFilters}
                 >
-                  Clear Filters
+                  Clear All
+                </button>
+                <button
+                  onClick={applyFilters}
+                  className="btn-primary flex-1"
+                  disabled={!hasUnappliedChanges || applyingFilters}
+                >
+                  {applyingFilters ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Applying...
+                    </div>
+                  ) : 'Apply Filters'}
                 </button>
               </div>
             </div>
@@ -634,124 +693,124 @@ function ExpensesList() {
             </div>
           </div>
         </div>
-      )}
+              )}
 
-      {/* Edit Expense Modal */}
-      {editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Edit Expense</h3>
-              <button
-                onClick={() => setEditingExpense(null)}
-                className="text-gray-400 hover:text-gray-500"
-                disabled={editLoading}
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    id="description"
-                    name="description"
-                    value={editFormData.description}
-                    onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-                      Amount
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">$</span>
-                      </div>
-                      <input
-                        type="number"
-                        id="amount"
-                        name="amount"
-                        value={editFormData.amount}
-                        onChange={handleEditFormChange}
-                        step="0.01"
-                        min="0.01"
-                        className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                        required
-                      />
+              {/* Edit Expense Modal */}
+              {editingExpense && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                  <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">Edit Expense</h3>
+                      <button
+                        onClick={() => setEditingExpense(null)}
+                        className="text-gray-400 hover:text-gray-500"
+                        disabled={editLoading}
+                      >
+                        <XMarkIcon className="h-5 w-5" />
+                      </button>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      id="date"
-                      name="date"
-                      value={editFormData.date}
-                      onChange={handleEditFormChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                      required
-                    />
+                    
+                    <form onSubmit={handleEditSubmit}>
+                      <div className="space-y-4">
+                        <div>
+                          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            id="description"
+                            name="description"
+                            value={editFormData.description}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                              Amount
+                            </label>
+                            <div className="relative rounded-md shadow-sm">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span className="text-gray-500 sm:text-sm">$</span>
+                              </div>
+                              <input
+                                type="number"
+                                id="amount"
+                                name="amount"
+                                value={editFormData.amount}
+                                onChange={handleEditFormChange}
+                                step="0.01"
+                                min="0.01"
+                                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                required
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                              Date
+                            </label>
+                            <input
+                              type="date"
+                              id="date"
+                              name="date"
+                              value={editFormData.date}
+                              onChange={handleEditFormChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                            Category
+                          </label>
+                          <select
+                            id="category"
+                            name="category"
+                            value={editFormData.category}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            required
+                          >
+                            <option value="">Select a category</option>
+                            {categories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => setEditingExpense(null)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                          disabled={editLoading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                          disabled={editLoading}
+                        >
+                          {editLoading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={editFormData.category}
-                    onChange={handleEditFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingExpense(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-                  disabled={editLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-                  disabled={editLoading}
-                >
-                  {editLoading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default ExpensesList
+              )}
+            </div>
+          )
+        }
+        
+        export default ExpensesList
