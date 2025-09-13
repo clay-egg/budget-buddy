@@ -16,8 +16,8 @@ function DashboardLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
@@ -28,18 +28,20 @@ function DashboardLayout() {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Add Expense', href: '/dashboard/add', icon: PlusIcon },
     { name: 'View Expenses', href: '/dashboard/expenses', icon: ChartBarIcon },
+    { name: 'Add Expense', href: '/dashboard/add', icon: PlusIcon },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex">
       {/* Sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
-        <div className="flex flex-col w-64 bg-white shadow-lg">
+        <div className="flex flex-col w-64 bg-white shadow-lg border-r border-gray-100">
           {/* Logo */}
-          <div className="flex items-center h-16 px-4 bg-primary-500">
-            <CurrencyDollarIcon className="h-8 w-8 text-white" />
+          <div className="flex items-center h-16 px-4 bg-gradient-to-r from-primary-600 to-indigo-600">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+              <CurrencyDollarIcon className="h-5 w-5 text-white" />
+            </div>
             <span className="ml-2 text-xl font-bold text-white">
               Budget Buddy
             </span>
@@ -51,32 +53,30 @@ function DashboardLayout() {
               <Link
                 key={item.name}
                 to={item.href}
-                className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-primary-50 hover:text-primary-600 transition-colors duration-200"
               >
-                <item.icon className="mr-3 h-5 w-5" />
+                <item.icon className="mr-3 h-5 w-5 text-gray-500 group-hover:text-primary-600" />
                 {item.name}
               </Link>
             ))}
           </nav>
 
           {/* User section */}
-          <div className="flex-shrink-0 p-4 border-t">
+          <div className="flex-shrink-0 p-4 border-t border-gray-100">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-primary-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user.name ? user.name[0].toUpperCase() : user.email?.[0]?.toUpperCase()}
-                  </span>
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-primary-600 to-indigo-600 flex items-center justify-center text-white font-medium">
+                  {user.name ? user.name[0].toUpperCase() : user.email?.[0]?.toUpperCase()}
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700 truncate">
-                  {user.name}
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user.name || user.email}
                 </p>
               </div>
               <button
                 onClick={signOut}
-                className="ml-auto p-1 rounded-md text-gray-400 hover:text-gray-500"
+                className="ml-auto p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors duration-200"
                 title="Sign out"
               >
                 <ArrowRightOnRectangleIcon className="h-5 w-5" />
@@ -89,25 +89,25 @@ function DashboardLayout() {
       {/* Main content */}
       <div className="flex flex-col w-0 flex-1">
         {/* Mobile header */}
-        <div className="md:hidden bg-white shadow-sm">
+        <div className="md:hidden bg-white/80 backdrop-blur-sm border-b border-gray-100">
           <div className="flex items-center justify-between h-16 px-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-gray-500 hover:text-gray-600"
+              className="text-gray-500 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100"
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
             <div className="flex items-center space-x-2">
-              <span className="text-lg font-semibold">Budget Buddy</span>
-              {user?.name && (
-                <span className="px-2 py-1 text-sm font-medium text-primary-700 bg-primary-100 rounded-full">
-                  {user.name}
-                </span>
-              )}
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary-600 to-indigo-600 flex items-center justify-center">
+                <CurrencyDollarIcon className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-lg font-bold bg-gradient-to-r from-primary-600 to-indigo-600 bg-clip-text text-transparent">
+                Budget Buddy
+              </span>
             </div>
             <button 
               onClick={signOut} 
-              className="text-gray-500 hover:text-gray-600 flex items-center"
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-600 transition-colors duration-200"
               title="Sign out"
             >
               <ArrowRightOnRectangleIcon className="h-6 w-6" />
