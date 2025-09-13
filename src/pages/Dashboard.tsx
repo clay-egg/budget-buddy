@@ -79,10 +79,15 @@ function Dashboard() {
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [categoryData, setCategoryData] = useState<{category: string; total: number}[]>([]);
   const [monthlyData, setMonthlyData] = useState<{month: string; total: number}[]>([]);
+  const [monthlyBudget, setMonthlyBudget] = useState(3000);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [newBudget, setNewBudget] = useState('');
+  const [isLoadingBudget, setIsLoadingBudget] = useState(true);
 
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+      fetchUserSettings();
     }
   }, [user]);
 
@@ -193,7 +198,60 @@ function Dashboard() {
       setMonthlyData(monthlyTrends);
     }
   };
-  
+
+  const fetchUserSettings = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('monthly_budget')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error('Error fetching user settings:', error);
+        return;
+      }
+
+      if (data?.monthly_budget) {
+        setMonthlyBudget(parseFloat(data.monthly_budget));
+      }
+    } catch (error) {
+      console.error('Error in fetchUserSettings:', error);
+    } finally {
+      setIsLoadingBudget(false);
+    }
+  };
+
+  const updateMonthlyBudget = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    const budgetValue = parseFloat(newBudget);
+    if (isNaN(budgetValue) || budgetValue <= 0) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert(
+          { 
+            user_id: user.id, 
+            monthly_budget: budgetValue 
+          },
+          { onConflict: 'user_id' }
+        )
+        .select();
+
+      if (error) throw error;
+      
+      setMonthlyBudget(budgetValue);
+      setIsEditingBudget(false);
+    } catch (error) {
+      console.error('Error updating budget:', error);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -303,7 +361,10 @@ function Dashboard() {
     },
   };
 
-  if (loading) {
+  const budgetUsage = Math.min((expenses.thisMonth / monthlyBudget) * 100, 100);
+  const remainingBudget = Math.max(0, monthlyBudget - expenses.thisMonth);
+
+  if (loading || isLoadingBudget) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
@@ -383,22 +444,60 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Monthly Budget</h2>
-            <span className="text-sm text-gray-500">
-              {new Date().toLocaleString('default', { month: 'long' })}
-            </span>
-          </div>
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-1">
-              <span>Spent: {formatCurrency(expenses.thisMonth)}</span>
-              <span>Budget: {formatCurrency(3000)}</span>
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">
+                {new Date().toLocaleString('default', { month: 'long' })}
+              </span>
+              <button 
+                onClick={() => {
+                  setIsEditingBudget(true);
+                  setNewBudget(monthlyBudget.toString());
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Edit
+              </button>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className="bg-blue-600 h-2.5 rounded-full" 
-                style={{ width: `${Math.min((expenses.thisMonth / 3000) * 100, 100)}%` }}
-              ></div>
-            </div>
           </div>
+          
+          {isEditingBudget ? (
+            <form onSubmit={updateMonthlyBudget} className="mb-4">
+              <div className="flex items-center">
+                <input
+                  type="number"
+                  value={newBudget}
+                  onChange={(e) => setNewBudget(e.target.value)}
+                  className="w-full p-2 border rounded-md mr-2"
+                  placeholder="Enter monthly budget"
+                  step="0.01"
+                  min="0"
+                  autoFocus
+                />
+                <button 
+                  type="submit" 
+                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Spent: {formatCurrency(expenses.thisMonth)}</span>
+                <span>Budget: {formatCurrency(monthlyBudget)}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className={`h-2.5 rounded-full ${
+                    budgetUsage > 80 ? 'bg-red-500' : 'bg-blue-600'
+                  }`}
+                  style={{ width: `${budgetUsage}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
           <div className="text-sm text-gray-600">
             <div className="flex justify-between">
               <span>Daily Average:</span>
@@ -406,8 +505,10 @@ function Dashboard() {
             </div>
             <div className="flex justify-between">
               <span>Remaining:</span>
-              <span className="font-medium">
-                {formatCurrency(Math.max(0, 3000 - expenses.thisMonth))}
+              <span className={`font-medium ${
+                remainingBudget < monthlyBudget * 0.2 ? 'text-red-600' : 'text-gray-900'
+              }`}>
+                {formatCurrency(remainingBudget)}
               </span>
             </div>
           </div>
