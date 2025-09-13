@@ -26,7 +26,7 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
-import { JSX, useEffect, useState } from 'react';
+import { JSX, useEffect, useMemo, useState } from 'react';
 import { Doughnut, Line } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -80,122 +80,83 @@ function Dashboard() {
   const [categoryData, setCategoryData] = useState<{category: string; total: number}[]>([]);
   const [monthlyData, setMonthlyData] = useState<{month: string; total: number}[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState(3000);
+  const [weeklyBudget, setWeeklyBudget] = useState(750); // Default to 1/4 of monthly
   const [isEditingBudget, setIsEditingBudget] = useState(false);
   const [newBudget, setNewBudget] = useState('');
   const [isLoadingBudget, setIsLoadingBudget] = useState(true);
+  const [timePeriod, setTimePeriod] = useState<'week' | 'month'>('month');
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      setLoading(true);
+      fetchExpenses();
       fetchUserSettings();
     }
-  }, [user]);
+  }, [user, timePeriod]);
 
-  const fetchDashboardData = async () => {
+  const fetchExpenses = async () => {
+    if (!user) return;
+    
     try {
-      setLoading(true);
-      await Promise.all([
-        fetchExpenseSummary(),
-        fetchRecentExpenses(),
-        fetchCategoryData(),
-        fetchMonthlyTrends()
-      ]);
+      const today = new Date();
+      let startDate = new Date();
+      
+      if (timePeriod === 'week') {
+        // For weekly view, get the start of the week
+        startDate.setDate(today.getDate() - today.getDay());
+      } else {
+        // For monthly view, get the start of the month
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      }
+      
+      // Fetch all expenses for the selected period
+      const { data: periodExpenses, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('date', startDate.toISOString())
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      // Fetch all expenses for the totals
+      const { data: allExpenses } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (allExpenses) {
+        const total = allExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        // Calculate this month's expenses
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const thisMonthTotal = allExpenses
+          .filter(exp => new Date(exp.date) >= firstDayOfMonth)
+          .reduce((sum, exp) => sum + exp.amount, 0);
+        
+        // Calculate this week's expenses
+        const firstDayOfWeek = new Date(today);
+        firstDayOfWeek.setDate(today.getDate() - today.getDay());
+        const thisWeekTotal = allExpenses
+          .filter(exp => new Date(exp.date) >= firstDayOfWeek)
+          .reduce((sum, exp) => sum + exp.amount, 0);
+        
+        setExpenses({
+          total,
+          thisMonth: thisMonthTotal,
+          thisWeek: thisWeekTotal
+        });
+      }
+
+      if (periodExpenses) {
+        setRecentExpenses(periodExpenses.slice(0, 5));
+        updateCategoryData(periodExpenses);
+        updateMonthlyTrends(periodExpenses, timePeriod);
+      }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error fetching expenses:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchExpenseSummary = async () => {
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    
-    const firstDayOfWeek = new Date(now);
-    firstDayOfWeek.setDate(now.getDate() - now.getDay());
-    firstDayOfWeek.setHours(0, 0, 0, 0);
-    
-    const { data: allExpenses } = await supabase
-      .from('expenses')
-      .select('amount')
-      .eq('user_id', user?.id);
-    
-    const { data: monthlyExpenses } = await supabase
-      .from('expenses')
-      .select('amount')
-      .eq('user_id', user?.id)
-      .gte('date', firstDayOfMonth);
-    
-    const { data: weeklyExpenses } = await supabase
-      .from('expenses')
-      .select('amount')
-      .eq('user_id', user?.id)
-      .gte('date', firstDayOfWeek.toISOString());
-    
-    const total = allExpenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-    const thisMonth = monthlyExpenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-    const thisWeek = weeklyExpenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-    
-    setExpenses({ total, thisMonth, thisWeek });
-  };
-
-  const fetchRecentExpenses = async () => {
-    const { data } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('user_id', user?.id)
-      .order('date', { ascending: false })
-      .limit(5);
-    
-    if (data) {
-      setRecentExpenses(data);
-    }
-  };
-
-  const fetchCategoryData = async () => {
-    const { data } = await supabase
-      .from('expenses')
-      .select('category, amount')
-      .eq('user_id', user?.id);
-    
-    if (data) {
-      const categoryMap = new Map<string, number>();
-      
-      data.forEach(expense => {
-        const current = categoryMap.get(expense.category) || 0;
-        categoryMap.set(expense.category, current + expense.amount);
-      });
-      
-      const sortedCategories = Array.from(categoryMap.entries())
-        .map(([category, total]) => ({ category, total }))
-        .sort((a, b) => b.total - a.total);
-      
-      setCategoryData(sortedCategories);
-    }
-  };
-
-  const fetchMonthlyTrends = async () => {
-    const { data } = await supabase
-      .from('expenses')
-      .select('date, amount')
-      .eq('user_id', user?.id)
-      .order('date', { ascending: true });
-    
-    if (data) {
-      const monthlyMap = new Map<string, number>();
-      
-      data.forEach(expense => {
-        const date = new Date(expense.date);
-        const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
-        const current = monthlyMap.get(monthYear) || 0;
-        monthlyMap.set(monthYear, current + expense.amount);
-      });
-      
-      const monthlyTrends = Array.from(monthlyMap.entries())
-        .map(([month, total]) => ({ month, total }))
-        .slice(-6); // Get last 6 months
-      
-      setMonthlyData(monthlyTrends);
     }
   };
 
@@ -205,7 +166,7 @@ function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('user_settings')
-        .select('monthly_budget')
+        .select('monthly_budget, weekly_budget')
         .eq('user_id', user.id)
         .single();
 
@@ -216,6 +177,9 @@ function Dashboard() {
 
       if (data?.monthly_budget) {
         setMonthlyBudget(parseFloat(data.monthly_budget));
+      }
+      if (data?.weekly_budget) {
+        setWeeklyBudget(parseFloat(data.weekly_budget));
       }
     } catch (error) {
       console.error('Error in fetchUserSettings:', error);
@@ -228,24 +192,31 @@ function Dashboard() {
     e.preventDefault();
     if (!user) return;
     
-    const budgetValue = parseFloat(newBudget);
-    if (isNaN(budgetValue) || budgetValue <= 0) return;
-
     try {
+      const budget = parseFloat(newBudget);
+      if (isNaN(budget) || budget < 0) return;
+
       const { error } = await supabase
         .from('user_settings')
         .upsert(
-          { 
-            user_id: user.id, 
-            monthly_budget: budgetValue 
+          {
+            user_id: user.id,
+            monthly_budget: timePeriod === 'month' ? budget : monthlyBudget,
+            weekly_budget: timePeriod === 'week' ? budget : weeklyBudget,
+            updated_at: new Date().toISOString(),
           },
           { onConflict: 'user_id' }
-        )
-        .select();
+        );
 
       if (error) throw error;
+
+      // Update the appropriate budget in state
+      if (timePeriod === 'week') {
+        setWeeklyBudget(budget);
+      } else {
+        setMonthlyBudget(budget);
+      }
       
-      setMonthlyBudget(budgetValue);
       setIsEditingBudget(false);
     } catch (error) {
       console.error('Error updating budget:', error);
@@ -267,6 +238,90 @@ function Dashboard() {
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
+
+  const updateCategoryData = (expenses: Expense[]) => {
+    const categoryMap = new Map<string, number>();
+    
+    expenses.forEach(expense => {
+      const current = categoryMap.get(expense.category) || 0;
+      categoryMap.set(expense.category, current + expense.amount);
+    });
+    
+    const sortedCategories = Array.from(categoryMap.entries())
+      .map(([category, total]) => ({ category, total }))
+      .sort((a, b) => b.total - a.total);
+    
+    setCategoryData(sortedCategories);
+  };
+
+  const updateMonthlyTrends = (expenses: Expense[], period: 'week' | 'month' = 'month') => {
+    const dataMap = new Map<string, number>();
+    
+    expenses.forEach(expense => {
+      const date = new Date(expense.date);
+      let key: string;
+      
+      if (period === 'week') {
+        // Group by day of week for weekly view
+        const day = date.toLocaleDateString('en-US', { weekday: 'short' });
+        key = day;
+      } else {
+        // Group by month for monthly view
+        key = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+      }
+      
+      const current = dataMap.get(key) || 0;
+      dataMap.set(key, current + expense.amount);
+    });
+    
+    // Prepare labels and data in the correct order
+    let labels: string[];
+    
+    if (period === 'week') {
+      // Week days in order
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const today = new Date().getDay();
+      // Rotate the array so current day is last
+      labels = [...days.slice(today + 1), ...days.slice(0, today + 1)];
+    } else {
+      // Last 6 months
+      labels = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        labels.push(`${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`);
+      }
+    }
+    
+    // Fill in the data, defaulting to 0 for missing periods
+    const data = labels.map(label => dataMap.get(label) || 0);
+    
+    setMonthlyData(labels.map((label, i) => ({
+      month: label,
+      total: data[i]
+    })));
+  };
+
+  // Calculate budget usage based on selected time period
+  const budgetUsage = useMemo(() => {
+    const spent = timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth;
+    const budget = timePeriod === 'week' ? weeklyBudget : monthlyBudget; 
+    return Math.min(Math.round((spent / budget) * 100), 100);
+  }, [timePeriod, expenses.thisWeek, expenses.thisMonth, monthlyBudget, weeklyBudget]);
+
+  // Calculate remaining budget based on selected time period
+  const remainingBudget = useMemo(() => {
+    const spent = timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth;
+    const budget = timePeriod === 'week' ? weeklyBudget : monthlyBudget;
+    return Math.max(budget - spent, 0);
+  }, [timePeriod, expenses.thisWeek, expenses.thisMonth, monthlyBudget, weeklyBudget]);
+
+  // Calculate daily average based on selected time period
+  const dailyAverage = useMemo(() => {
+    const spent = timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth;
+    const days = timePeriod === 'week' ? 7 : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    return spent / days;
+  }, [timePeriod, expenses.thisWeek, expenses.thisMonth]);
 
   // Chart data for category breakdown
   const categoryChartData = {
@@ -361,9 +416,6 @@ function Dashboard() {
     },
   };
 
-  const budgetUsage = Math.min((expenses.thisMonth / monthlyBudget) * 100, 100);
-  const remainingBudget = Math.max(0, monthlyBudget - expenses.thisMonth);
-
   if (loading || isLoadingBudget) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -375,9 +427,34 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Greeting and Stats */}
-      <div>
-      <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {user?.name || 'User'}</h1>
-        <p className="text-gray-500">Here's an overview of your spending</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {user?.name || 'User'}</h1>
+          <p className="text-gray-500">Here's an overview of your spending</p>
+        </div>
+        
+        <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setTimePeriod('week')}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${
+              timePeriod === 'week'
+                ? 'bg-white shadow text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            This Week
+          </button>
+          <button
+            onClick={() => setTimePeriod('month')}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${
+              timePeriod === 'month'
+                ? 'bg-white shadow text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            This Month
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -440,18 +517,22 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Monthly Budget */}
+        {/* Monthly/Weekly Budget */}
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Monthly Budget</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {timePeriod === 'week' ? 'Weekly' : 'Monthly'} Budget
+            </h2>
             <div className="flex items-center">
               <span className="text-sm text-gray-500 mr-2">
-                {new Date().toLocaleString('default', { month: 'long' })}
+                {timePeriod === 'week' 
+                  ? 'This Week' 
+                  : new Date().toLocaleString('default', { month: 'long' })}
               </span>
               <button 
                 onClick={() => {
                   setIsEditingBudget(true);
-                  setNewBudget(monthlyBudget.toString());
+                  setNewBudget(timePeriod === 'week' ? weeklyBudget.toString() : monthlyBudget.toString());
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800"
               >
@@ -468,7 +549,7 @@ function Dashboard() {
                   value={newBudget}
                   onChange={(e) => setNewBudget(e.target.value)}
                   className="w-full p-2 border rounded-md mr-2"
-                  placeholder="Enter monthly budget"
+                  placeholder={`Enter ${timePeriod === 'week' ? 'weekly' : 'monthly'} budget`}
                   step="0.01"
                   min="0"
                   autoFocus
@@ -484,8 +565,8 @@ function Dashboard() {
           ) : (
             <div className="mb-4">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Spent: {formatCurrency(expenses.thisMonth)}</span>
-                <span>Budget: {formatCurrency(monthlyBudget)}</span>
+                <span>Spent: {formatCurrency(timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth)}</span>
+                <span>Budget: {formatCurrency(timePeriod === 'week' ? weeklyBudget : monthlyBudget)}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div 
@@ -501,12 +582,14 @@ function Dashboard() {
           <div className="text-sm text-gray-600">
             <div className="flex justify-between">
               <span>Daily Average:</span>
-              <span>{formatCurrency(expenses.thisMonth / new Date().getDate())}</span>
+              <span>{formatCurrency(dailyAverage)}</span>
             </div>
             <div className="flex justify-between">
               <span>Remaining:</span>
               <span className={`font-medium ${
-                remainingBudget < monthlyBudget * 0.2 ? 'text-red-600' : 'text-gray-900'
+                remainingBudget < (timePeriod === 'week' ? weeklyBudget : monthlyBudget) * 0.2 
+                  ? 'text-red-600' 
+                  : 'text-gray-900'
               }`}>
                 {formatCurrency(remainingBudget)}
               </span>
