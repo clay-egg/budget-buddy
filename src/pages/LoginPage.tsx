@@ -1,4 +1,4 @@
-import { ArrowRightIcon, ChartBarIcon, CurrencyDollarIcon, DevicePhoneMobileIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ChartBarIcon, CurrencyDollarIcon, DevicePhoneMobileIcon, EyeIcon, EyeSlashIcon, ReceiptPercentIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -33,6 +33,8 @@ function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
@@ -135,6 +137,17 @@ function LoginPage() {
           variants={container}
         >
           <motion.div className="w-full max-w-md space-y-8" variants={item}>
+            <motion.button
+              onClick={() => navigate('/')}
+              whileHover={{ x: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="group flex items-center text-gray-600 hover:text-primary-600 transition-all duration-200 mb-4 -ml-1"
+            >
+              <div className="p-1.5 rounded-full bg-gray-100 group-hover:bg-primary-50 transition-colors duration-200 mr-2">
+                <ArrowLeftIcon className="h-4 w-4 text-gray-500 group-hover:text-primary-600 transition-colors duration-200" />
+              </div>
+              <span className="text-sm font-medium">Back to Home</span>
+            </motion.button>
             <div className="text-center">
               <motion.div 
                 className="w-16 h-16 mx-auto rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 flex items-center justify-center mb-4"
@@ -214,7 +227,7 @@ function LoginPage() {
                     />
                   </motion.div>
                 )}
-                <motion.div variants={item}>
+                <motion.div variants={item} className="relative">
                   <label htmlFor="email-address" className="sr-only">
                     Email address
                   </label>
@@ -230,37 +243,61 @@ function LoginPage() {
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
                 </motion.div>
-                <motion.div variants={item}>
+                <motion.div variants={item} className="relative">
                   <label htmlFor="password" className="sr-only">
                     Password
                   </label>
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
                     required
-                    className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                    className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pr-10"
                     placeholder="Password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
                 </motion.div>
                 {!isLogin && (
-                  <motion.div variants={item}>
+                  <motion.div variants={item} className="relative">
                     <label htmlFor="confirm-password" className="sr-only">
                       Confirm Password
                     </label>
                     <input
                       id="confirm-password"
                       name="confirm-password"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       required={!isLogin}
-                      className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                      className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pr-10"
                       placeholder="Confirm Password"
                       value={form.confirmPassword}
                       onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
                   </motion.div>
                 )}
               </div>
@@ -287,20 +324,17 @@ function LoginPage() {
                     loading ? 'opacity-75 cursor-not-allowed' : ''
                   }`}
                 >
-                  <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                    {loading ? (
+                  {loading ? (
+                    <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                    ) : (
-                      <ArrowRightIcon className="h-5 w-5 text-primary-300 group-hover:text-primary-200" />
-                    )}
-                  </span>
-                  {loading 
-                    ? (isLogin ? 'Signing in...' : 'Creating account...')
-                    : (isLogin ? 'Sign in' : 'Sign up')
-                  }
+                      {isLogin ? 'Signing in...' : 'Creating account...'}
+                    </>
+                  ) : (
+                    isLogin ? 'Sign in' : 'Sign up'
+                  )}
                 </button>
               </motion.div>
             </form>

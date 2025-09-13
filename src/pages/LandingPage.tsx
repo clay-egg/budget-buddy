@@ -80,7 +80,7 @@ function LandingPage() {
                 Budget Buddy
               </span>
             </motion.div>
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
               <motion.a 
                 href="#features" 
                 className="text-gray-600 hover:text-primary-600 transition-colors duration-300"
@@ -88,12 +88,15 @@ function LandingPage() {
               >
                 Features
               </motion.a>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+              >
                 <Link 
-                  to="/login" 
+                  to="/login"
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-indigo-600 text-white font-medium hover:shadow-lg transition-all duration-300"
                 >
-                  Get Started - Free
+                  Sign In
                 </Link>
               </motion.div>
             </div>
