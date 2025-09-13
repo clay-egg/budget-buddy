@@ -26,6 +26,7 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
+import { motion } from 'framer-motion';
 import { JSX, useEffect, useMemo, useState } from 'react';
 import { Doughnut, Line } from 'react-chartjs-2';
 import { Link } from 'react-router-dom';
@@ -419,21 +420,54 @@ function Dashboard() {
   if (loading || isLoadingBudget) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <motion.div 
+          className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        />
       </div>
     );
   }
 
+  // Animation variants
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+  };
+
   return (
-    <div className="space-y-6">
+    <motion.div 
+      className="space-y-6"
+      initial="hidden"
+      animate="show"
+      variants={container}
+    >
       {/* Greeting and Stats */}
-      <div className="flex justify-between items-center mb-6">
+      <motion.div 
+        className="flex justify-between items-center mb-6"
+        variants={item}
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {user?.name || 'User'}</h1>
           <p className="text-gray-500">Here's an overview of your spending</p>
         </div>
         
-        <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+        <motion.div 
+          className="flex space-x-2 bg-gray-100 p-1 rounded-lg"
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+        >
           <button
             onClick={() => setTimePeriod('week')}
             className={`px-4 py-2 text-sm font-medium rounded-md ${
@@ -454,55 +488,78 @@ function Dashboard() {
           >
             This Month
           </button>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-              <CurrencyDollarIcon className="h-6 w-6" />
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        variants={container}
+      >
+        {[
+          {
+            icon: <CurrencyDollarIcon className="h-6 w-6" />,
+            title: 'Total Spent',
+            value: formatCurrency(expenses.total),
+            bg: 'bg-blue-100',
+            text: 'text-blue-600'
+          },
+          {
+            icon: <CalendarIcon className="h-6 w-6" />,
+            title: 'This Month',
+            value: formatCurrency(expenses.thisMonth),
+            bg: 'bg-green-100',
+            text: 'text-green-600'
+          },
+          {
+            icon: <ClockIcon className="h-6 w-6" />,
+            title: 'This Week',
+            value: formatCurrency(expenses.thisWeek),
+            bg: 'bg-purple-100',
+            text: 'text-purple-600'
+          }
+        ].map((stat, index) => (
+          <motion.div 
+            key={index}
+            className="bg-white p-6 rounded-lg shadow"
+            variants={item}
+            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+          >
+            <div className="flex items-center">
+              <div className={`p-3 rounded-full ${stat.bg} ${stat.text}`}>
+                {stat.icon}
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+              </div>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Spent</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(expenses.total)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-600">
-              <CalendarIcon className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">This Month</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(expenses.thisMonth)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-              <ClockIcon className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">This Week</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(expenses.thisWeek)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <motion.div 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        variants={container}
+      >
         {/* Top Categories */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <motion.div 
+          className="bg-white p-6 rounded-lg shadow"
+          variants={item}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Top Categories</h2>
           </div>
           <div className="space-y-4">
-            {categoryData.slice(0, 5).map((category) => (
-              <div key={category.category} className="flex items-center justify-between">
+            {categoryData.slice(0, 5).map((category, index) => (
+              <motion.div 
+                key={category.category} 
+                className="flex items-center justify-between"
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.1 * index }}
+                whileHover={{ x: 5 }}
+              >
                 <div className="flex items-center">
                   <span className="mr-2">
                     {categoryIcons[category.category] || <QuestionMarkCircleIcon className="h-5 w-5 text-gray-400" />}
@@ -512,18 +569,24 @@ function Dashboard() {
                 <span className="text-sm font-medium text-gray-900">
                   {formatCurrency(category.total)}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Monthly/Weekly Budget */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <motion.div 
+          className="bg-white p-6 rounded-lg shadow"
+          variants={item}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
               {timePeriod === 'week' ? 'Weekly' : 'Monthly'} Budget
             </h2>
-            <div className="flex items-center">
+            <motion.div 
+              className="flex items-center"
+              whileHover={{ scale: 1.05 }}
+            >
               <span className="text-sm text-gray-500 mr-2">
                 {timePeriod === 'week' 
                   ? 'This Week' 
@@ -538,11 +601,17 @@ function Dashboard() {
               >
                 Edit
               </button>
-            </div>
+            </motion.div>
           </div>
           
           {isEditingBudget ? (
-            <form onSubmit={updateMonthlyBudget} className="mb-4">
+            <motion.form 
+              onSubmit={updateMonthlyBudget} 
+              className="mb-4"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
               <div className="flex items-center">
                 <input
                   type="number"
@@ -561,22 +630,29 @@ function Dashboard() {
                   Save
                 </button>
               </div>
-            </form>
+            </motion.form>
           ) : (
-            <div className="mb-4">
+            <motion.div 
+              className="mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Spent: {formatCurrency(timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth)}</span>
                 <span>Budget: {formatCurrency(timePeriod === 'week' ? weeklyBudget : monthlyBudget)}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <motion.div 
                   className={`h-2.5 rounded-full ${
                     budgetUsage > 80 ? 'bg-red-500' : 'bg-blue-600'
                   }`}
-                  style={{ width: `${budgetUsage}%` }}
-                ></div>
+                  initial={{ width: 0 }}
+                  animate={{ width: `${budgetUsage}%` }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                />
               </div>
-            </div>
+            </motion.div>
           )}
           
           <div className="text-sm text-gray-600">
@@ -586,29 +662,47 @@ function Dashboard() {
             </div>
             <div className="flex justify-between">
               <span>Remaining:</span>
-              <span className={`font-medium ${
-                remainingBudget < (timePeriod === 'week' ? weeklyBudget : monthlyBudget) * 0.2 
-                  ? 'text-red-600' 
-                  : 'text-gray-900'
-              }`}>
+              <span 
+                className={`font-medium ${
+                  remainingBudget < (timePeriod === 'week' ? weeklyBudget : monthlyBudget) * 0.2 
+                    ? 'text-red-600' 
+                    : 'text-gray-900'
+                }`}
+              >
                 {formatCurrency(remainingBudget)}
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Recent Transactions */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <motion.div 
+          className="bg-white p-6 rounded-lg shadow"
+          variants={item}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-            <Link to="/expenses" className="text-sm font-medium text-primary-600 hover:text-primary-700">
-              View all
-            </Link>
+            <motion.span whileHover={{ x: 5 }}>
+              <Link 
+                to="/dashboard/expenses" 
+                className="text-sm font-medium text-primary-600 hover:text-primary-700"
+              >
+                View all
+              </Link>
+            </motion.span>
           </div>
           <div className="space-y-4">
             {recentExpenses.slice(0, 3).length > 0 ? (
-              recentExpenses.slice(0, 3).map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between">
+              recentExpenses.slice(0, 3).map((expense, index) => (
+                <motion.div 
+                  key={expense.id} 
+                  className="flex items-center justify-between"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ x: 5, backgroundColor: 'rgba(249, 250, 251, 0.7)' }}
+                  style={{ padding: '0.5rem', borderRadius: '0.5rem' }}
+                >
                   <div className="flex items-center">
                     <div className="p-2 rounded-full bg-gray-100 text-gray-600 mr-3">
                       {categoryIcons[expense.category] || <QuestionMarkCircleIcon className="h-4 w-4" />}
@@ -624,21 +718,32 @@ function Dashboard() {
                       {new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))
             ) : (
-              <div className="text-center text-sm text-gray-500 py-4">
+              <motion.div 
+                className="text-center text-sm text-gray-500 py-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
                 No recent transactions
-              </div>
+              </motion.div>
             )}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <motion.div 
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6"
+        variants={container}
+      >
         {/* Category Breakdown */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <motion.div 
+          className="bg-white p-6 rounded-lg shadow"
+          variants={item}
+          whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Category Breakdown</h2>
           </div>
@@ -651,10 +756,14 @@ function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Monthly Trend */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <motion.div 
+          className="bg-white p-6 rounded-lg shadow"
+          variants={item}
+          whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Spending Trend</h2>
           </div>
@@ -667,9 +776,9 @@ function Dashboard() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 
