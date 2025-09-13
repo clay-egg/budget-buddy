@@ -1,5 +1,6 @@
 import { FunnelIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Expense, ExpenseCategory } from '../types/database'
@@ -11,6 +12,15 @@ function ExpensesList() {
   const [error, setError] = useState('')
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
   const [expenseToDelete, setExpenseToDelete] = useState<{id: string, description: string} | null>(null)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    description: '',
+    amount: '',
+    category: '',
+    date: ''
+  })
+  const [editLoading, setEditLoading] = useState(false)
+  const navigate = useNavigate()
   
   // Filters state
   const [showFilters, setShowFilters] = useState(false)
@@ -108,6 +118,66 @@ function ExpensesList() {
       setError(err.message || 'Failed to delete expense')
     } finally {
       setDeleteLoading(null)
+    }
+  }
+
+  const handleEditClick = (expense: Expense) => {
+    setEditingExpense(expense)
+    setEditFormData({
+      description: expense.description,
+      amount: expense.amount.toString(),
+      category: expense.category,
+      date: expense.date.split('T')[0] // Format date for date input
+    })
+  }
+
+  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingExpense || !user) return
+
+    setEditLoading(true)
+    
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({
+          description: editFormData.description.trim(),
+          amount: parseFloat(editFormData.amount),
+          category: editFormData.category as ExpenseCategory,
+          date: editFormData.date,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingExpense.id)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      // Update local state
+      setExpenses(expenses.map(exp => 
+        exp.id === editingExpense.id 
+          ? { 
+              ...exp, 
+              ...editFormData, 
+              amount: parseFloat(editFormData.amount),
+              date: editFormData.date 
+            } 
+          : exp
+      ))
+      
+      setEditingExpense(null)
+      setEditFormData({ description: '', amount: '', category: '', date: '' })
+    } catch (err: any) {
+      setError(err.message || 'Failed to update expense')
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -335,6 +405,121 @@ function ExpensesList() {
         </div>
       )}
 
+      {/* Edit Expense Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Edit Expense</h3>
+              <button
+                onClick={() => setEditingExpense(null)}
+                className="text-gray-400 hover:text-gray-500"
+                disabled={editLoading}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <input
+                    type="text"
+                    id="description"
+                    name="description"
+                    value={editFormData.description}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">$</span>
+                      </div>
+                      <input
+                        type="number"
+                        id="amount"
+                        name="amount"
+                        value={editFormData.amount}
+                        onChange={handleEditFormChange}
+                        step="0.01"
+                        min="0.01"
+                        className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      id="date"
+                      name="date"
+                      value={editFormData.date}
+                      onChange={handleEditFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={editFormData.category}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingExpense(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                  disabled={editLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                  disabled={editLoading}
+                >
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Summary Section */}
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -417,12 +602,15 @@ function ExpensesList() {
                 </div>
                 {/* Action Buttons (Edit/Delete) */}
                 <div className="ml-4 flex items-center space-x-2">
-                  {/* Edit Button - Currently a placeholder */}
+                  {/* Edit Button */}
                   <button
-                    // onClick={() => {/* TODO: Implement edit functionality */} }
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditClick(expense);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     title="Edit expense"
-                    disabled // Disable until edit functionality is added
+                    disabled={!!deleteLoading}
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>

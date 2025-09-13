@@ -6,6 +6,7 @@ export interface Expense {
     category: string
     date: string
     created_at: string
+    updated_at?: string;
   }
   
   export type ExpenseCategory = 
