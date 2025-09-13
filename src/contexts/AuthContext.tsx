@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 // Import the updated User type from database.ts
-import type { User as SupabaseUserType } from '../types/database' 
+import type { User as SupabaseUserType } from '../types/database'
 
 // Define a more specific type for the user object we'll manage in context
 // This ensures our context user object matches our desired structure
@@ -68,11 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Modified signUp function to accept 'name' and update user metadata
   const signUp = async (email: string, password: string, name: string) => {
+    // First, sign up the user with their name in the options
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      // Note: user_metadata is NOT set directly here during signUp.
-      // We'll update it immediately after successful signup.
+      options: {
+        data: {
+          name: name,
+          email: email
+        }
+      }
     });
 
     if (error) {
@@ -85,26 +90,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Update the user's metadata with the provided name
         const { data: updatedUserSession, error: updateError } = await supabase.auth.updateUser({
-          data: { name: name } // Store name in user_metadata
+          data: { 
+            name: name,
+            email: email
+          }
         });
 
         if (updateError) {
           console.error("Error updating user metadata after signup:", updateError);
-          // Decide how to handle this:
-          // For now, we log the error but still return the original signup success.
-          // A more robust app might require metadata update to be truly successful.
+          // We'll still proceed since the initial signup was successful
         } else {
           // If metadata update succeeded, update the user state in the context
-          setUser(extractUserData(updatedUserSession?.user)); 
+          setUser(extractUserData(updatedUserSession?.user));
         }
       } catch (updateException) {
-        // Catch any unexpected exceptions during the metadata update
         console.error("Exception during user metadata update:", updateException);
       }
     }
     
-    // Return the original signup result object
-    return { data, error }; 
+    return { data, error };
   }
 
   // Modified signIn to ensure user metadata is extracted and set in context
