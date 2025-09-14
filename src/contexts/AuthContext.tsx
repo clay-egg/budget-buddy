@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Modified signUp function to accept 'name' and update user metadata
   const signUp = async (email: string, password: string, name: string) => {
-    // First, sign up the user with their name in the options
+    // Sign up the user with their name in the options
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -76,7 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           name: name,
           email: email
-        }
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });
 
@@ -85,28 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { data, error };
     }
 
-    // If signup was successful and a user object is returned
-    if (data.user) {
-      try {
-        // Update the user's metadata with the provided name
-        const { data: updatedUserSession, error: updateError } = await supabase.auth.updateUser({
-          data: { 
-            name: name,
-            email: email
-          }
-        });
-
-        if (updateError) {
-          console.error("Error updating user metadata after signup:", updateError);
-          // We'll still proceed since the initial signup was successful
-        } else {
-          // If metadata update succeeded, update the user state in the context
-          setUser(extractUserData(updatedUserSession?.user));
-        }
-      } catch (updateException) {
-        console.error("Exception during user metadata update:", updateException);
-      }
-    }
+    // The user metadata is already set in the signUp options,
+    // so we don't need an immediate updateUser call
+    // The session will be established after email confirmation
     
     return { data, error };
   }

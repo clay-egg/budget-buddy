@@ -61,6 +61,20 @@ const categoryIcons: Record<string, JSX.Element> = {
   'Other': <QuestionMarkCircleIcon className="h-5 w-5 text-gray-400" />,
 };
 
+// Category colors mapping to match icon colors
+const categoryColors: Record<string, string> = {
+  'Food & Dining': '#F59E0B',    // amber-500
+  'Transportation': '#10B981',   // emerald-500
+  'Shopping': '#EC4899',         // pink-500
+  'Entertainment': '#8B5CF6',    // violet-500
+  'Bills & Utilities': '#3B82F6',// blue-500
+  'Healthcare': '#EF4444',       // red-500
+  'Education': '#6366F1',        // indigo-500
+  'Travel': '#06B6D4',          // cyan-500
+  'Business': '#6B7280',        // gray-500
+  'Other': '#9CA3AF'            // gray-400
+};
+
 interface Expense {
   id: string;
   amount: number;
@@ -138,15 +152,7 @@ function Dashboard() {
         // Calculate this week's expenses
         const firstDayOfWeek = new Date(today);
         firstDayOfWeek.setDate(today.getDate() - today.getDay());
-        firstDayOfWeek.setHours(0, 0, 0, 0); // Normalize to start of day
-        
-        console.log('Debug - Today:', today);
-        console.log('Debug - First day of week (Sunday):', firstDayOfWeek);
-        console.log('Debug - All expenses to check:', allExpenses.map(e => ({
-          date: e.date,
-          amount: e.amount,
-          isInThisWeek: new Date(e.date) >= firstDayOfWeek
-        })));
+        firstDayOfWeek.setHours(0, 0, 0, 0);
         
         const thisWeekTotal = allExpenses
           .filter(exp => new Date(exp.date) >= firstDayOfWeek)
@@ -162,8 +168,10 @@ function Dashboard() {
       if (periodExpenses) {
         setRecentExpenses(periodExpenses.slice(0, 5));
         updateCategoryData(periodExpenses);
-        updateMonthlyTrends(periodExpenses, timePeriod);
       }
+      
+      // Update trends with the current time period
+      await updateMonthlyTrends([], timePeriod);
     } catch (error) {
       console.error('Error fetching expenses:', error);
     } finally {
@@ -265,52 +273,89 @@ function Dashboard() {
     setCategoryData(sortedCategories);
   };
 
-  const updateMonthlyTrends = (expenses: Expense[], period: 'week' | 'month' = 'month') => {
-    const dataMap = new Map<string, number>();
+  const updateMonthlyTrends = async (expenses: Expense[], period: 'week' | 'month' = 'month') => {
+    if (!user) return;
     
-    expenses.forEach(expense => {
-      const date = new Date(expense.date);
-      let key: string;
+    try {
+      // Fetch all historical expenses for accurate trend calculation
+      const { data: allExpenses, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      if (!allExpenses || allExpenses.length === 0) {
+        setMonthlyData([]);
+        return;
+      }
+
+      const dataMap = new Map<string, number>();
+      const now = new Date();
+      let labels: string[] = [];
       
       if (period === 'week') {
-        // Group by day of week for weekly view
-        const day = date.toLocaleDateString('en-US', { weekday: 'short' });
-        key = day;
+        // For weekly view, show last 7 days including today with month and day
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          const dayNumber = date.getDate();
+          const month = date.toLocaleString('default', { month: 'short' });
+          const dayKey = `${month} ${dayNumber}`;
+          days.push(dayKey);
+          dataMap.set(dayKey, 0); // Initialize with 0 for each day
+        }
+        labels = days;
+        
+        // Calculate expenses for each day of the week
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - 6); // 6 days ago + today = 7 days
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        allExpenses.forEach(expense => {
+          const expenseDate = new Date(expense.date);
+          if (expenseDate >= startOfWeek) {
+            const dayNumber = expenseDate.getDate();
+            const month = expenseDate.toLocaleString('default', { month: 'short' });
+            const dayKey = `${month} ${dayNumber}`;
+            const current = dataMap.get(dayKey) || 0;
+            dataMap.set(dayKey, current + expense.amount);
+          }
+        });
       } else {
-        // Group by month for monthly view
-        key = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+        // For monthly view, show last 6 months including current month
+        const months = [];
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const monthKey = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+          months.push(monthKey);
+          dataMap.set(monthKey, 0); // Initialize with 0 for each month
+        }
+        labels = months;
+        
+        // Calculate expenses for each month
+        allExpenses.forEach(expense => {
+          const expenseDate = new Date(expense.date);
+          const monthKey = `${expenseDate.toLocaleString('default', { month: 'short' })} ${expenseDate.getFullYear()}`;
+          if (dataMap.has(monthKey)) {
+            const current = dataMap.get(monthKey) || 0;
+            dataMap.set(monthKey, current + expense.amount);
+          }
+        });
       }
       
-      const current = dataMap.get(key) || 0;
-      dataMap.set(key, current + expense.amount);
-    });
-    
-    // Prepare labels and data in the correct order
-    let labels: string[];
-    
-    if (period === 'week') {
-      // Week days in order
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const today = new Date().getDay();
-      // Rotate the array so current day is last
-      labels = [...days.slice(today + 1), ...days.slice(0, today + 1)];
-    } else {
-      // Last 6 months
-      labels = [];
-      const now = new Date();
-      for (let i = 5; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        labels.push(`${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`);
-      }
+      // Convert map to array of { month, total } objects in the correct order
+      const trendData = labels.map(label => ({
+        month: label,
+        total: dataMap.get(label) || 0
+      }));
+      
+      setMonthlyData(trendData);
+    } catch (error) {
+      console.error('Error updating trend data:', error);
+      setMonthlyData([]);
     }
-    
-    // Fill in the data, defaulting to 0 for missing periods
-    const data = labels.map(label => dataMap.get(label) || 0);
-    
-    setMonthlyData(labels.map((label, i) => ({
-      month: label,
-      total: data[i]
-    })));
   };
 
   // Calculate budget usage based on selected time period
@@ -340,15 +385,7 @@ function Dashboard() {
     datasets: [
       {
         data: categoryData.map(item => item.total),
-        backgroundColor: [
-          '#3B82F6', // blue-500
-          '#10B981', // emerald-500
-          '#F59E0B', // amber-500
-          '#8B5CF6', // violet-500
-          '#EC4899', // pink-500
-          '#6B7280', // gray-500
-          '#EF4444', // red-500
-        ],
+        backgroundColor: categoryData.map(item => categoryColors[item.category] || '#6B7280'),
         borderWidth: 0,
       },
     ],
@@ -427,6 +464,22 @@ function Dashboard() {
     },
   };
 
+  // Add this helper function to format the date range
+  const getWeekRange = () => {
+    const today = new Date();
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay());
+    
+    const lastDayOfWeek = new Date(firstDayOfWeek);
+    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+    
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+    
+    return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+  };
+
   if (loading || isLoadingBudget) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -486,7 +539,7 @@ function Dashboard() {
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            This Week
+            This Week 
           </button>
           <button
             onClick={() => setTimePeriod('month')}
@@ -523,7 +576,7 @@ function Dashboard() {
           },
           {
             icon: <ClockIcon className="h-6 w-6" />,
-            title: 'This Week',
+            title: 'This Week ' + "(" +getWeekRange() +")",
             value: formatCurrency(expenses.thisWeek),
             bg: 'bg-purple-100',
             text: 'text-purple-600'
@@ -586,32 +639,34 @@ function Dashboard() {
 
         {/* Monthly/Weekly Budget */}
         <motion.div 
-          className="bg-white p-6 rounded-lg shadow"
+          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200"
           variants={item}
         >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {timePeriod === 'week' ? 'Weekly' : 'Monthly'} Budget
-            </h2>
-            <motion.div 
-              className="flex items-center"
-              whileHover={{ scale: 1.05 }}
-            >
-              <span className="text-sm text-gray-500 mr-2">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">
+                {timePeriod === 'week' ? 'Weekly' : 'Monthly'} Budget
+              </h2>
+              <p className="text-sm text-gray-500">
                 {timePeriod === 'week' 
-                  ? 'This Week' 
-                  : new Date().toLocaleString('default', { month: 'long' })}
-              </span>
-              <button 
-                onClick={() => {
-                  setIsEditingBudget(true);
-                  setNewBudget(timePeriod === 'week' ? weeklyBudget.toString() : monthlyBudget.toString());
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Edit
-              </button>
-            </motion.div>
+                  ? getWeekRange()
+                  : new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <motion.button 
+              onClick={() => {
+                setIsEditingBudget(true);
+                setNewBudget(timePeriod === 'week' ? weeklyBudget.toString() : monthlyBudget.toString());
+              }}
+              className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200 flex items-center"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Set Limit
+            </motion.button>
           </div>
           
           {isEditingBudget ? (
@@ -622,20 +677,25 @@ function Dashboard() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <div className="flex items-center">
-                <input
-                  type="number"
-                  value={newBudget}
-                  onChange={(e) => setNewBudget(e.target.value)}
-                  className="w-full p-2 border rounded-md mr-2"
-                  placeholder={`Enter ${timePeriod === 'week' ? 'weekly' : 'monthly'} budget`}
-                  step="0.01"
-                  min="0"
-                  autoFocus
-                />
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">฿</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={newBudget}
+                    onChange={(e) => setNewBudget(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder={`Enter ${timePeriod === 'week' ? 'weekly' : 'monthly'} budget`}
+                    step="1"
+                    min="0"
+                    autoFocus
+                  />
+                </div>
                 <button 
                   type="submit" 
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
                   Save
                 </button>
@@ -643,19 +703,21 @@ function Dashboard() {
             </motion.form>
           ) : (
             <motion.div 
-              className="mb-4"
+              className="mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Spent: {formatCurrency(timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth)}</span>
-                <span>Budget: {formatCurrency(timePeriod === 'week' ? weeklyBudget : monthlyBudget)}</span>
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span>Spent: <span className="font-medium text-gray-800">{formatCurrency(timePeriod === 'week' ? expenses.thisWeek : expenses.thisMonth)}</span></span>
+                <span>Limit: <span className="font-medium text-gray-800">{formatCurrency(timePeriod === 'week' ? weeklyBudget : monthlyBudget)}</span></span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden mb-4">
                 <motion.div 
-                  className={`h-2.5 rounded-full ${
-                    budgetUsage > 80 ? 'bg-red-500' : 'bg-blue-600'
+                  className={`h-full rounded-full ${
+                    budgetUsage > 90 ? 'bg-red-500' : 
+                    budgetUsage > 70 ? 'bg-yellow-500' : 
+                    'bg-blue-500'
                   }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${budgetUsage}%` }}
@@ -665,20 +727,18 @@ function Dashboard() {
             </motion.div>
           )}
           
-          <div className="text-sm text-gray-600">
-            <div className="flex justify-between">
-              <span>Daily Average:</span>
-              <span>{formatCurrency(dailyAverage)}</span>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Daily Average</span>
+              <span className="text-sm font-semibold text-gray-800">{formatCurrency(dailyAverage)}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Remaining:</span>
-              <span 
-                className={`font-medium ${
-                  remainingBudget < (timePeriod === 'week' ? weeklyBudget : monthlyBudget) * 0.2 
-                    ? 'text-red-600' 
-                    : 'text-gray-900'
-                }`}
-              >
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-600">Remaining</span>
+              <span className={`text-sm font-semibold ${
+                remainingBudget < (timePeriod === 'week' ? weeklyBudget : monthlyBudget) * 0.2 
+                  ? 'text-red-600' 
+                  : 'text-green-600'
+              }`}>
                 {formatCurrency(remainingBudget)}
               </span>
             </div>
@@ -755,7 +815,9 @@ function Dashboard() {
           whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Category Breakdown</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Category Breakdown ({timePeriod === 'week' ? 'Week' : 'Month'})
+            </h2>
           </div>
           <div className="h-64">
             {categoryData.length > 0 ? (
@@ -775,7 +837,9 @@ function Dashboard() {
           whileHover={{ y: -5, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Spending Trend</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {timePeriod === 'week' ? 'Spending Trend (Last 7 Days)' : 'Monthly Spending Trend'}
+            </h2>
           </div>
           <div className="h-64">
             {monthlyData.length > 0 ? (
