@@ -138,6 +138,16 @@ function Dashboard() {
         // Calculate this week's expenses
         const firstDayOfWeek = new Date(today);
         firstDayOfWeek.setDate(today.getDate() - today.getDay());
+        firstDayOfWeek.setHours(0, 0, 0, 0); // Normalize to start of day
+        
+        console.log('Debug - Today:', today);
+        console.log('Debug - First day of week (Sunday):', firstDayOfWeek);
+        console.log('Debug - All expenses to check:', allExpenses.map(e => ({
+          date: e.date,
+          amount: e.amount,
+          isInThisWeek: new Date(e.date) >= firstDayOfWeek
+        })));
+        
         const thisWeekTotal = allExpenses
           .filter(exp => new Date(exp.date) >= firstDayOfWeek)
           .reduce((sum, exp) => sum + exp.amount, 0);
