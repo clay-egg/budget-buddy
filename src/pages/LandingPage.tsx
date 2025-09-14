@@ -326,7 +326,9 @@ function LandingPage() {
                 </svg>
               </motion.a>
               <motion.a 
-                href="#" 
+                href="https://github.com/clay-egg/budget-buddy" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-500 hover:text-gray-700"
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.9 }}
@@ -340,7 +342,7 @@ function LandingPage() {
           </div>
           <div className="mt-8 border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between">
             <p className="text-gray-500 text-sm">
-              &copy; {new Date().getFullYear()} Budget Buddy. All rights reserved.
+              &copy; {new Date().getFullYear()} - Sai Myat Min Han. All rights reserved.
             </p>
             <div className="mt-4 md:mt-0 flex space-x-6">
               <motion.a 

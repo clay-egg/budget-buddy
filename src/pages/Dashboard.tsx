@@ -523,7 +523,7 @@ function Dashboard() {
       >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{getGreeting()}, {user?.name || 'User'}</h1>
-          <p className="text-gray-500">Here's an overview of your spending</p>
+          <p className="text-gray-500">Here's an Overview of Your Spending</p>
         </div>
         
         <motion.div 
@@ -751,7 +751,7 @@ function Dashboard() {
           variants={item}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Expenses</h2>
             <motion.span whileHover={{ x: 5 }}>
               <Link 
                 to="/dashboard/expenses" 

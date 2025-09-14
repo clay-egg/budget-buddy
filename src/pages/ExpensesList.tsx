@@ -353,7 +353,7 @@ function ExpensesList() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Your Expenses</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Track and manage all your expenses
+              Track and Manage all Your Expenses
             </p>
           </div>
           
@@ -557,7 +557,7 @@ function ExpensesList() {
                   <div className="text-2xl font-bold text-gray-900">
                     {expenses.length}
                   </div>
-                  <div className="text-sm text-gray-500">Total Entries</div>
+                  <div className="text-sm text-gray-500">Total Expenses</div>
                 </div>
                 {/* Total Amount */}
                 <div className="text-center">
