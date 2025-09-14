@@ -518,7 +518,7 @@ function Dashboard() {
     >
       {/* Greeting and Stats */}
       <motion.div 
-        className="flex justify-between items-center mb-6"
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4"
         variants={item}
       >
         <div>
@@ -527,26 +527,26 @@ function Dashboard() {
         </div>
         
         <motion.div 
-          className="flex space-x-2 bg-gray-100 p-1 rounded-lg"
+          className="flex flex-wrap gap-2 w-full sm:w-auto"
           whileHover={{ scale: 1.02 }}
           transition={{ type: 'spring', stiffness: 400, damping: 10 }}
         >
           <button
             onClick={() => setTimePeriod('week')}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
+            className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               timePeriod === 'week'
                 ? 'bg-white shadow text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'
             }`}
           >
             This Week 
           </button>
           <button
             onClick={() => setTimePeriod('month')}
-            className={`px-4 py-2 text-sm font-medium rounded-md ${
+            className={`flex-1 sm:flex-none px-4 py-2 text-sm font-medium rounded-md transition-colors ${
               timePeriod === 'month'
                 ? 'bg-white shadow text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+                : 'text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'
             }`}
           >
             This Month

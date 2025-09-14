@@ -1,13 +1,14 @@
 import {
-  ArrowRightOnRectangleIcon,
-  Bars3Icon,
-  ChartBarIcon,
-  CurrencyDollarIcon,
-  HomeIcon,
-  PlusIcon
+    ArrowRightOnRectangleIcon,
+    Bars3Icon,
+    ChartBarIcon,
+    CurrencyDollarIcon,
+    HomeIcon,
+    PlusIcon,
+    XMarkIcon
 } from '@heroicons/react/24/outline'
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, Outlet } from 'react-router-dom'
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 function DashboardLayout() {
@@ -16,11 +17,22 @@ function DashboardLayout() {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const { user, signOut, loading } = useAuth()
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
+
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [location])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setProfileMenuOpen(false)
+      }
+      if (mobileMenuRef.current && 
+          !mobileMenuRef.current.contains(event.target as Node) && 
+          !(event.target as HTMLElement).closest('[data-mobile-menu-button]')) {
+        setSidebarOpen(false)
       }
     }
 
@@ -66,6 +78,69 @@ function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex">
+      {/* Mobile sidebar */}
+      <div 
+        ref={mobileMenuRef}
+        className={`fixed inset-0 z-40 md:hidden transition-transform duration-300 ease-in-out transform ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity" 
+             onClick={() => setSidebarOpen(false)}></div>
+        <div className="relative flex flex-col w-80 max-w-xs h-full bg-white shadow-xl">
+          <div className="flex items-center justify-between h-16 px-4 bg-gradient-to-r from-primary-600 to-indigo-600">
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                <CurrencyDollarIcon className="h-5 w-5 text-white" />
+              </div>
+              <span className="ml-2 text-xl font-bold text-white">
+                Budget Buddy
+              </span>
+            </div>
+            <button
+              type="button"
+              className="text-white hover:text-gray-300 p-2 rounded-md focus:outline-none"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-primary-50 hover:text-primary-600 transition-colors duration-200"
+              >
+                <item.icon className="mr-3 h-5 w-5 text-gray-500 group-hover:text-primary-600" />
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex-shrink-0 p-4 border-t border-gray-100">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-r from-primary-600 to-indigo-600 flex items-center justify-center text-white font-medium">
+                  {user.name ? user.name[0].toUpperCase() : user.email?.[0]?.toUpperCase()}
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user.name || user.email}
+                </p>
+              </div>
+              <button
+                onClick={openSignOutConfirm}
+                className="ml-auto p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors duration-200"
+                title="Sign out"
+              >
+                <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Sign Out Confirmation Modal */}
       {showSignOutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -157,6 +232,7 @@ function DashboardLayout() {
         <div className="md:hidden bg-white/80 backdrop-blur-sm border-b border-gray-100">
           <div className="flex items-center justify-between h-16 px-4">
             <button
+              data-mobile-menu-button
               onClick={() => setSidebarOpen(true)}
               className="text-gray-500 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100"
             >

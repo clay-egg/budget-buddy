@@ -549,29 +549,29 @@ function ExpensesList() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
         >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="card flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="w-full">
+            <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
                 {/* Total Expenses Count */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
+                <div className="p-2 sm:p-3 text-center border-r border-gray-100 last:border-r-0">
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-gray-900">
                     {expenses.length}
                   </div>
-                  <div className="text-sm text-gray-500">Total Expenses</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Total Expenses</div>
                 </div>
                 {/* Total Amount */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary-600">
+                <div className="p-2 sm:p-3 text-center border-r border-gray-100 last:border-r-0">
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-primary-600">
                     {formatCurrency(totalExpenses)}
                   </div>
-                  <div className="text-sm text-gray-500">Total Amount</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Total Amount</div>
                 </div>
                 {/* Average Expense */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                <div className="p-2 sm:p-3 text-center">
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-green-600">
                     {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\u0E3F0.00'}
                   </div>
-                  <div className="text-sm text-gray-500">Average</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Average</div>
                 </div>
               </div>
             </div>
