@@ -162,41 +162,68 @@ function ExpensesList() {
   }
 
   const handleEditClick = (expense: Expense) => {
-    setEditingExpense(expense)
+    setEditingExpense(expense);
     setEditFormData({
       description: expense.description,
       amount: expense.amount.toString(),
       category: expense.category,
       date: expense.date.split('T')[0] // Format date for date input
-    })
-  }
+    });
+  };
 
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setEditFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
+    const { name, value } = e.target;
+    
+    // Special handling for amount input to ensure proper number formatting
+    if (name === 'amount') {
+      // Remove any non-numeric characters except decimal point
+      const numericValue = value.replace(/[^0-9.]/g, '');
+      // Ensure only one decimal point
+      const parts = numericValue.split('.');
+      if (parts.length > 2) {
+        // If more than one decimal point, keep only the first one
+        return;
+      }
+      // Limit to 2 decimal places
+      if (parts[1] && parts[1].length > 2) {
+        return;
+      }
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: numericValue
+      }));
+    } else {
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingExpense || !user) return
+    e.preventDefault();
+    if (!editingExpense || !user) return;
 
-    setEditLoading(true)
+    setEditLoading(true);
     
     try {
+      // Ensure amount is a valid number with exactly 2 decimal places
+      const amountValue = parseFloat(editFormData.amount);
+      if (isNaN(amountValue) || amountValue <= 0) {
+        throw new Error('Please enter a valid amount');
+      }
+      
       const { error } = await supabase
         .from('expenses')
         .update({
           description: editFormData.description.trim(),
-          amount: parseFloat(editFormData.amount),
+          amount: parseFloat(amountValue.toFixed(2)), // Ensure exactly 2 decimal places
           category: editFormData.category as ExpenseCategory,
           date: editFormData.date,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingExpense.id)
-        .eq('user_id', user.id)
+        .eq('user_id', user.id);
 
       if (error) throw error
 
@@ -549,29 +576,29 @@ function ExpensesList() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
         >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="card flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="w-full">
+            <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 {/* Total Expenses Count */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
+                <div className="p-2 sm:p-3 text-center border-r border-gray-100 last:border-r-0">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                     {expenses.length}
                   </div>
-                  <div className="text-sm text-gray-500">Total Expenses</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Total Expenses</div>
                 </div>
                 {/* Total Amount */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary-600">
+                <div className="p-2 sm:p-3 text-center border-r border-gray-100 last:border-r-0">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600">
                     {formatCurrency(totalExpenses)}
                   </div>
-                  <div className="text-sm text-gray-500">Total Amount</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Total Amount</div>
                 </div>
                 {/* Average Expense */}
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                <div className="p-2 sm:p-3 text-center">
+                  <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">
                     {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\u0E3F0.00'}
                   </div>
-                  <div className="text-sm text-gray-500">Average</div>
+                  <div className="text-xs sm:text-sm text-gray-500 mt-1">Average</div>
                 </div>
               </div>
             </div>
@@ -810,16 +837,17 @@ function ExpensesList() {
                       </label>
                       <div className="relative rounded-md shadow-sm">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">\u0E3F</span>
+                          <span className="text-gray-500 sm:text-sm">฿</span>
                         </div>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           id="amount"
                           name="amount"
                           value={editFormData.amount}
                           onChange={handleEditFormChange}
-                          step="0.01"
-                          min="0.01"
+                          placeholder="0.00"
+                          pattern="^\d*\.?\d{0,2}$"
                           className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                           required
                         />
