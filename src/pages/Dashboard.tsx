@@ -235,9 +235,9 @@ function Dashboard() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('th-TH', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'THB',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(amount);

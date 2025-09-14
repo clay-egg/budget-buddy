@@ -259,11 +259,13 @@ function ExpensesList() {
   // Check if current inputs differ from applied filters
   const hasUnappliedChanges = JSON.stringify(filterInputs) !== JSON.stringify(appliedFilters)
 
-  // Helper function to format numbers as USD currency
+  // Helper function to format numbers as currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('th-TH', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'THB',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount)
   }
 
@@ -567,7 +569,7 @@ function ExpensesList() {
                 {/* Average Expense */}
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\$0.00'}
+                    {expenses.length > 0 ? formatCurrency(totalExpenses / expenses.length) : '\u0E3F0.00'}
                   </div>
                   <div className="text-sm text-gray-500">Average</div>
                 </div>
@@ -808,7 +810,7 @@ function ExpensesList() {
                       </label>
                       <div className="relative rounded-md shadow-sm">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
+                          <span className="text-gray-500 sm:text-sm">\u0E3F</span>
                         </div>
                         <input
                           type="number"
