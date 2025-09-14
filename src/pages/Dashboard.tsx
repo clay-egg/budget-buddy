@@ -816,7 +816,9 @@ function Dashboard() {
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
-              Category Breakdown ({timePeriod === 'week' ? 'Week' : 'Month'})
+              Category Breakdown ({timePeriod === 'week' 
+                ? `${new Date().toLocaleString('default', { month: 'short' })} ${new Date().getDate() - 6} - ${new Date().toLocaleString('default', { month: 'short' })} ${new Date().getDate()}`
+                : new Date().toLocaleString('default', { month: 'long' })})
             </h2>
           </div>
           <div className="h-64">
