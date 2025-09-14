@@ -24,6 +24,7 @@ const item = {
 
 function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -80,7 +81,8 @@ function LoginPage() {
         if (error) {
           setError(error.message)
         } else {
-          setMessage('Sign up successful! Please sign in to continue.')
+          setShowConfirmation(true)
+          setMessage('A confirmation email has been sent to your email address. Please check your inbox and verify your email to continue.')
           setForm({ email: '', password: '', confirmPassword: '', name: '' })
         }
       }
@@ -93,6 +95,7 @@ function LoginPage() {
 
   const toggleMode = () => {
     setIsLogin(!isLogin)
+    setShowConfirmation(false)
     setError('')
     setMessage('')
     setForm({
@@ -208,136 +211,173 @@ function LoginPage() {
               </motion.div>
             )}
 
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-              <div className="rounded-md shadow-sm space-y-4">
-                {!isLogin && (
-                  <motion.div variants={item}>
-                    <label htmlFor="name" className="sr-only">
-                      Full name
-                    </label>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      required={!isLogin}
-                      className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                      placeholder="Full name"
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    />
-                  </motion.div>
-                )}
-                <motion.div variants={item} className="relative">
-                  <label htmlFor="email-address" className="sr-only">
-                    Email address
-                  </label>
-                  <input
-                    id="email-address"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                    placeholder="Email address"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  />
-                </motion.div>
-                <motion.div variants={item} className="relative">
-                  <label htmlFor="password" className="sr-only">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete={isLogin ? 'current-password' : 'new-password'}
-                    required
-                    className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pr-10"
-                    placeholder="Password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  />
+            {showConfirmation ? (
+              <motion.div 
+                className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-md text-center"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-blue-800 mb-2">Check your email</h3>
+                <p className="text-sm text-blue-700 mb-4">
+                  We've sent a confirmation link to <span className="font-medium">{form.email}</span>.
+                </p>
+                <p className="text-sm text-blue-700 mb-6">
+                  Please click the link in the email to verify your account and complete your registration.
+                </p>
+                <div className="flex flex-col space-y-3">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
-                    tabIndex={-1}
+                    onClick={toggleMode}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    {showPassword ? (
-                      <EyeSlashIcon className="h-5 w-5" />
-                    ) : (
-                      <EyeIcon className="h-5 w-5" />
-                    )}
+                    Back to Sign In
                   </button>
-                </motion.div>
-                {!isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500 focus:outline-none"
+                  >
+                    Didn't receive an email? Resend
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                <div className="rounded-md shadow-sm space-y-4">
+                  {!isLogin && (
+                    <motion.div variants={item}>
+                      <label htmlFor="name" className="sr-only">
+                        Full name
+                      </label>
+                      <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required={!isLogin}
+                        className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                        placeholder="Full name"
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      />
+                    </motion.div>
+                  )}
                   <motion.div variants={item} className="relative">
-                    <label htmlFor="confirm-password" className="sr-only">
-                      Confirm Password
+                    <label htmlFor="email-address" className="sr-only">
+                      Email address
                     </label>
                     <input
-                      id="confirm-password"
-                      name="confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      required={!isLogin}
+                      id="email-address"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                      placeholder="Email address"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                  </motion.div>
+                  <motion.div variants={item} className="relative">
+                    <label htmlFor="password" className="sr-only">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete={isLogin ? 'current-password' : 'new-password'}
+                      required
                       className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pr-10"
-                      placeholder="Confirm Password"
-                      value={form.confirmPassword}
-                      onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                      placeholder="Password"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
                       tabIndex={-1}
                     >
-                      {showConfirmPassword ? (
+                      {showPassword ? (
                         <EyeSlashIcon className="h-5 w-5" />
                       ) : (
                         <EyeIcon className="h-5 w-5" />
                       )}
                     </button>
                   </motion.div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between">
-                {isLogin && (
-                  <div className="text-sm">
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none"
-                    >
-                      Forgot your password?
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <motion.div variants={item} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 ${
-                    loading ? 'opacity-75 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {isLogin ? 'Signing in...' : 'Creating account...'}
-                    </>
-                  ) : (
-                    isLogin ? 'Sign in' : 'Sign up'
+                  {!isLogin && (
+                    <motion.div variants={item} className="relative">
+                      <label htmlFor="confirm-password" className="sr-only">
+                        Confirm Password
+                      </label>
+                      <input
+                        id="confirm-password"
+                        name="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required={!isLogin}
+                        className="appearance-none rounded-lg relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm pr-10"
+                        placeholder="Confirm Password"
+                        value={form.confirmPassword}
+                        onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeSlashIcon className="h-5 w-5" />
+                        ) : (
+                          <EyeIcon className="h-5 w-5" />
+                        )}
+                      </button>
+                    </motion.div>
                   )}
-                </button>
-              </motion.div>
-            </form>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  {isLogin && (
+                    <div className="text-sm">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none"
+                      >
+                        Forgot your password?
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <motion.div variants={item} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 ${
+                      loading ? 'opacity-75 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {isLogin ? 'Signing in...' : 'Creating account...'}
+                      </>
+                    ) : (
+                      isLogin ? 'Sign in' : 'Sign up'
+                    )}
+                  </button>
+                </motion.div>
+              </form>
+            )}
           </motion.div>
         </motion.div>
 
